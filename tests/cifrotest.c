@@ -318,7 +318,7 @@ int main( int argc, char **argv )
   gtk_cifro_area_set_scale_limits( GTK_CIFRO_AREA( area ), 0.001, 1000.0, 0.001, 1000.0 );
   gtk_cifro_scope_set_axis_name( GTK_CIFRO_SCOPE( area ), "ms", "V" );
   gtk_cifro_scope_set_channel_time_param( GTK_CIFRO_SCOPE( area ), NULL, 0.0, max_time / ( n_points - 1 ) );
-//  gtk_cifro_scope_set_info_show( GTK_CIFRO_SCOPE( area ), TRUE );
+  gtk_cifro_scope_set_info_show( GTK_CIFRO_SCOPE( area ), TRUE );
 
   if( dotted ) gtk_cifro_scope_set_channel_draw_type( GTK_CIFRO_SCOPE( area ), NULL, GTK_CIFRO_SCOPE_DOTTED );
 

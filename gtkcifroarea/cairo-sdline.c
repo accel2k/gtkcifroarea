@@ -220,7 +220,7 @@ cairo_sdline_surface* cairo_sdline_surface_create_for( cairo_surface_t *cairo_su
 void cairo_sdline_surface_destroy( cairo_sdline_surface *surface )
 {
 
-  if( surface == NULL ) return;
+  if( !surface ) return;
   cairo_destroy( surface->cairo );
   if( surface->self_create ) cairo_surface_destroy( surface->cairo_surface );
   g_free( surface );

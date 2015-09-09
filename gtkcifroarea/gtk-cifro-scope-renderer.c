@@ -847,7 +847,7 @@ static void gtk_cifro_scope_renderer_draw_info( cairo_t *cairo, GtkCifroScopeRen
   while( g_hash_table_iter_next( &channels_iter, NULL, (gpointer)&channel ) )
     {
 
-    if( channel->value_scale == 1.0 && channel->name == NULL && label_width != 0 ) continue;
+    if( channel->value_scale == 1.0 && !channel->name && label_width != 0 ) continue;
 
     value = value_y / channel->value_scale - channel->value_shift;
     gtk_cifro_area_state_get_axis_step( scale_y, 1, &value, NULL, NULL, &value_power );
@@ -971,7 +971,7 @@ static void gtk_cifro_scope_renderer_draw_info( cairo_t *cairo, GtkCifroScopeRen
     while( g_hash_table_iter_next( &channels_iter, NULL, (gpointer)&channel ) )
       {
 
-      if( channel->value_scale == 1.0 && channel->name == NULL ) continue;
+      if( channel->value_scale == 1.0 && !channel->name ) continue;
 
       value = ( value_y - channel->value_shift ) / channel->value_scale;
       gtk_cifro_area_state_get_axis_step( scale_y, 1, &value, NULL, NULL, &value_power );
@@ -986,7 +986,7 @@ static void gtk_cifro_scope_renderer_draw_info( cairo_t *cairo, GtkCifroScopeRen
       cairo_move_to( cairo, info_center - text_width / PANGO_SCALE - text_spacing / 2, label_top );
       pango_cairo_show_layout( cairo, font );
 
-      pango_layout_set_text( font, channel->name == NULL ? priv->y_axis_name : channel->name, -1 );
+      pango_layout_set_text( font, channel->name ? channel->name : priv->y_axis_name, -1 );
       cairo_move_to( cairo, info_center, label_top );
       pango_cairo_show_layout( cairo, font );
 
@@ -1530,7 +1530,7 @@ void gtk_cifro_scope_renderer_set_channel_name( GtkCifroScopeRenderer *scope_ren
 
   g_hash_table_iter_init( &channels_iter, priv->channels );
   while( g_hash_table_iter_next( &channels_iter, &cur_channel_id, (gpointer)&channel ) )
-    if( channel_id == NULL || cur_channel_id == channel_id )
+    if( !channel_id || cur_channel_id == channel_id )
       {
       g_free( channel->name );
       channel->name = g_strdup( axis_name );
@@ -1553,7 +1553,7 @@ void gtk_cifro_scope_renderer_set_channel_time_param( GtkCifroScopeRenderer *sco
 
   g_hash_table_iter_init( &channels_iter, priv->channels );
   while( g_hash_table_iter_next( &channels_iter, &cur_channel_id, (gpointer)&channel ) )
-    if( channel_id == NULL || cur_channel_id == channel_id )
+    if( !channel_id || cur_channel_id == channel_id )
       {
       channel->time_shift = time_shift;
       channel->time_step = time_step;
@@ -1576,7 +1576,7 @@ void gtk_cifro_scope_renderer_set_channel_value_param( GtkCifroScopeRenderer *sc
 
   g_hash_table_iter_init( &channels_iter, priv->channels );
   while( g_hash_table_iter_next( &channels_iter, &cur_channel_id, (gpointer)&channel ) )
-    if( channel_id == NULL || cur_channel_id == channel_id )
+    if( !channel_id || cur_channel_id == channel_id )
       {
       channel->value_shift = value_shift;
       channel->value_scale = value_scale;
@@ -1599,7 +1599,7 @@ void gtk_cifro_scope_renderer_set_channel_draw_type( GtkCifroScopeRenderer *scop
 
   g_hash_table_iter_init( &channels_iter, priv->channels );
   while( g_hash_table_iter_next( &channels_iter, &cur_channel_id, (gpointer)&channel ) )
-    if( channel_id == NULL || cur_channel_id == channel_id )
+    if( !channel_id || cur_channel_id == channel_id )
       channel->draw_type = draw_type;
 
   priv->visible_update = TRUE;
@@ -1619,7 +1619,7 @@ void gtk_cifro_scope_renderer_set_channel_color( GtkCifroScopeRenderer *scope_re
 
   g_hash_table_iter_init( &channels_iter, priv->channels );
   while( g_hash_table_iter_next( &channels_iter, &cur_channel_id, (gpointer)&channel ) )
-    if( channel_id == NULL || cur_channel_id == channel_id )
+    if( !channel_id || cur_channel_id == channel_id )
       channel->color = cairo_sdline_color( red, green, blue, 1.0 );
 
   priv->visible_update = TRUE;
@@ -1665,7 +1665,7 @@ void gtk_cifro_scope_renderer_set_channel_show( GtkCifroScopeRenderer *scope_ren
 
   g_hash_table_iter_init( &channels_iter, priv->channels );
   while( g_hash_table_iter_next( &channels_iter, &cur_channel_id, (gpointer)&channel ) )
-    if( channel_id == NULL || cur_channel_id == channel_id )
+    if( !channel_id || cur_channel_id == channel_id )
       channel->show = show;
 
   priv->visible_update = TRUE;
