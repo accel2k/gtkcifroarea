@@ -457,7 +457,7 @@ static void gtk_cifro_scope_renderer_draw_hruler( cairo_t *cairo, GtkCifroScopeR
   cairo_sdline_set_cairo_color( cairo, priv->text_color );
 
   if( axis_power > 0 ) axis_power = 0;
-  g_sprintf( text_format, "%%.%df", (gint)fabs( axis_power ) );
+  g_snprintf( text_format, sizeof( text_format ), "%%.%df", (gint)fabs( axis_power ) );
 
   axis = axis_from;
   while( axis <= axis_to )
@@ -596,7 +596,7 @@ static void gtk_cifro_scope_renderer_draw_vruler( cairo_t *cairo, GtkCifroScopeR
   cairo_sdline_set_cairo_color( cairo, priv->text_color );
 
   if( axis_power > 0 ) axis_power = 0;
-  g_sprintf( text_format, "%%.%df", (gint)fabs( axis_power ) );
+  g_snprintf( text_format, sizeof( text_format ), "%%.%df", (gint)fabs( axis_power ) );
 
   axis = axis_from;
   while( axis <= axis_to )
@@ -852,10 +852,10 @@ static void gtk_cifro_scope_renderer_draw_info( cairo_t *cairo, GtkCifroScopeRen
     value = value_y / channel->value_scale - channel->value_shift;
     gtk_cifro_area_state_get_axis_step( scale_y, 1, &value, NULL, NULL, &value_power );
     if( value_power > 0 ) value_power = 0;
-    g_sprintf( text_format, "-%%.%df", (gint)fabs( value_power ) );
+    g_snprintf( text_format, sizeof( text_format ), "-%%.%df", (gint)fabs( value_power ) );
     value = MAX( ABS( from_y ), ABS( to_y ) );
     value = value / channel->value_scale - channel->value_shift;
-    g_sprintf( text_str, text_format, value );
+    g_snprintf( text_str, sizeof( text_str ), text_format, value );
 
     if( channel->name )
       {
@@ -877,8 +877,8 @@ static void gtk_cifro_scope_renderer_draw_info( cairo_t *cairo, GtkCifroScopeRen
   value = value_x;
   gtk_cifro_area_state_get_axis_step( scale_x, 1, &value, NULL, NULL, &value_power );
   if( value_power > 0 ) value_power = 0;
-  g_sprintf( text_format, "-%%.%df", (gint)fabs( value_power ) );
-  g_ascii_formatd( text_str, sizeof( text_str ), text_format, MAX( ABS( from_x ), ABS( to_x ) ) );
+  g_snprintf( text_format, sizeof( text_format ), "-%%.%df", (gint)fabs( value_power ) );
+  g_snprintf( text_str, sizeof( text_str ), text_format, MAX( ABS( from_x ), ABS( to_x ) ) );
 
   pango_layout_set_text( font, text_str, -1 );
   pango_layout_get_size( font, &text_width, &text_height );
@@ -926,7 +926,7 @@ static void gtk_cifro_scope_renderer_draw_info( cairo_t *cairo, GtkCifroScopeRen
   value = value_x;
   gtk_cifro_area_state_get_axis_step( scale_x, 1, &value, NULL, NULL, &value_power );
   if( value_power > 0 ) value_power = 0;
-  g_sprintf( text_format, "%%.%df", (gint)fabs( value_power ) );
+  g_snprintf( text_format, sizeof( text_format ), "%%.%df", (gint)fabs( value_power ) );
   g_ascii_formatd( text_str, sizeof( text_str ), text_format, value_x );
 
   pango_layout_set_text( font, text_str, -1 );
@@ -943,7 +943,7 @@ static void gtk_cifro_scope_renderer_draw_info( cairo_t *cairo, GtkCifroScopeRen
   value = value_y;
   gtk_cifro_area_state_get_axis_step( scale_y, 1, &value, NULL, NULL, &value_power );
   if( value_power > 0 ) value_power = 0;
-  g_sprintf( text_format, "%%.%df", (gint)fabs( value_power ) );
+  g_snprintf( text_format, sizeof( text_format ), "%%.%df", (gint)fabs( value_power ) );
   g_ascii_formatd( text_str, sizeof( text_str ), text_format, value_y );
 
   pango_layout_set_text( font, text_str, -1 );
@@ -976,7 +976,7 @@ static void gtk_cifro_scope_renderer_draw_info( cairo_t *cairo, GtkCifroScopeRen
       value = ( value_y - channel->value_shift ) / channel->value_scale;
       gtk_cifro_area_state_get_axis_step( scale_y, 1, &value, NULL, NULL, &value_power );
       if( value_power > 0 ) value_power = 0;
-      g_sprintf( text_format, "%%.%df", (gint)fabs( value_power ) );
+      g_snprintf( text_format, sizeof( text_format ), "%%.%df", (gint)fabs( value_power ) );
       g_ascii_formatd( text_str, sizeof( text_str ), text_format, ( value_y - channel->value_shift ) / channel->value_scale );
 
       cairo_sdline_set_cairo_color( cairo, channel->color );
