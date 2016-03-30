@@ -1,7 +1,7 @@
 /*
  * GtkCifroArea - 2D layers image management library.
  *
- * Copyright 2013-2015 Andrei Fadeev (andrei@webcontrol.ru)
+ * Copyright 2013-2017 Andrei Fadeev (andrei@webcontrol.ru)
  *
  * This file is part of GtkCifroArea.
  *
@@ -21,37 +21,36 @@
  * Alternatively, you can license this code under a commercial license.
  * Contact the author in this case.
  *
-*/
+ */
 
-/*!
+/**
  * \file gtk-cifro-curve-types.h
  *
  * \brief Заголовочный файл общих типов GTK+ виджета осциллографа совмещённого с параметрической кривой
  * \author Andrei Fadeev
- * \date 2013-2015
+ * \date 2013-2016
  * \license GNU General Public License version 3 или более поздняя<br>
  * Коммерческая лицензия - свяжитесь с автором
  *
-*/
+ */
 
-#ifndef _gtk_cifro_curve_types_h
-#define _gtk_cifro_curve_types_h
+#ifndef __GTK_CIFRO_CURVE_TYPES_H__
+#define __GTK_CIFRO_CURVE_TYPES_H__
 
 #include <glib.h>
 
 G_BEGIN_DECLS
 
-
-/*! \brief Структура с описанием точки. */
-typedef struct GtkCifroCurvePoint {
-
-  gdouble                    x;                  /*!< X координата точки; */
-  gdouble                    y;                  /*!< Y координата точки. */
-
+/** \brief Структура с описанием точки. */
+typedef struct
+{
+  gdouble              x;                  /**< X координата точки; */
+  gdouble              y;                  /**< Y координата точки. */
 } GtkCifroCurvePoint;
 
-
-/*! Callback функция для расчета аналитической кривой.
+/**
+ *
+ * Callback функция для расчета аналитической кривой.
  *
  * \param param - переменная функции;
  * \param points - массив точек параметров функции;
@@ -60,9 +59,10 @@ typedef struct GtkCifroCurvePoint {
  * \return значение функции.
  *
  */
-typedef gdouble (*GtkCifroCurveFunc)( gdouble param, GArray *points, gpointer curve_data );
-
+typedef gdouble        (*GtkCifroCurveFunc)            (gdouble        param,
+                                                        GArray        *points,
+                                                        gpointer       curve_data);
 
 G_END_DECLS
 
-#endif /* _gtk_cifro_curve_types_h */
+#endif /* __GTK_CIFRO_CURVE_TYPES_H__ */

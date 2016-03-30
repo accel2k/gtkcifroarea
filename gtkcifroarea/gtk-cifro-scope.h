@@ -1,7 +1,7 @@
 /*
  * GtkCifroArea - 2D layers image management library.
  *
- * Copyright 2013-2015 Andrei Fadeev (andrei@webcontrol.ru)
+ * Copyright 2013-2016 Andrei Fadeev (andrei@webcontrol.ru)
  *
  * This file is part of GtkCifroArea.
  *
@@ -21,14 +21,14 @@
  * Alternatively, you can license this code under a commercial license.
  * Contact the author in this case.
  *
-*/
+ */
 
-/*!
+/**
  * \file gtk-cifro-scope.h
  *
  * \brief Заголовочный файл GTK+ виджета осциллографа
  * \author Andrei Fadeev
- * \date 2013-2015
+ * \date 2013-2016
  * \license GNU General Public License version 3 или более поздняя<br>
  * Коммерческая лицензия - свяжитесь с автором
  *
@@ -65,45 +65,56 @@
  *
  * Виджет использует шрифт и цвета текущей темы GTK+.
  *
-*/
+ */
 
-#ifndef _gtk_cifro_scope_h
-#define _gtk_cifro_scope_h
+#ifndef __GTK_CIFRO_SCOPE_H__
+#define __GTK_CIFRO_SCOPE_H__
 
 #include <gtk/gtk.h>
 
 #include <gtk-cifro-area.h>
 #include <gtk-cifro-scope-types.h>
+#include <gtk-cifro-area-exports.h>
 
 G_BEGIN_DECLS
 
+#define GTK_TYPE_CIFRO_SCOPE             (gtk_cifro_scope_get_type ())
+#define GTK_CIFRO_SCOPE(obj)             (G_TYPE_CHECK_INSTANCE_CAST ((obj), GTK_TYPE_CIFRO_SCOPE, GtkCifroScope))
+#define GTK_IS_CIFRO_SCOPE(obj)          (G_TYPE_CHECK_INSTANCE_TYPE ((obj), GTK_TYPE_CIFRO_SCOPE))
+#define GTK_CIFRO_SCOPE_CLASS(klass)     (G_TYPE_CHECK_CLASS_CAST ((klass), GTK_TYPE_CIFRO_SCOPE, GtkCifroScopeClass))
+#define GTK_IS_CIFRO_SCOPE_CLASS(klass)  (G_TYPE_CHECK_CLASS_TYPE ((klass), GTK_TYPE_CIFRO_SCOPE))
+#define GTK_CIFRO_SCOPE_GET_CLASS(obj)   (G_TYPE_INSTANCE_GET_CLASS ((obj), GTK_TYPE_CIFRO_SCOPE, GtkCifroScopeClass))
 
-#define GTK_TYPE_CIFRO_SCOPE                     ( gtk_cifro_scope_get_type() )
-#define GTK_CIFRO_SCOPE( obj )                   ( G_TYPE_CHECK_INSTANCE_CAST( ( obj ), GTK_TYPE_CIFRO_SCOPE, GtkCifroScope ) )
-#define GTK_IS_CIFRO_SCOPE( obj )                ( G_TYPE_CHECK_INSTANCE_TYPE( ( obj ), GTK_TYPE_CIFRO_SCOPE ) )
-#define GTK_CIFRO_SCOPE_CLASS( klass )           ( G_TYPE_CHECK_CLASS_CAST( ( klass ), GTK_TYPE_CIFRO_SCOPE, GtkCifroScopeClass ) )
-#define GTK_IS_CIFRO_SCOPE_CLASS( klass )        ( G_TYPE_CHECK_CLASS_TYPE( ( klass ), GTK_TYPE_CIFRO_SCOPE ) )
-#define GTK_CIFRO_SCOPE_GET_CLASS( obj )         ( G_TYPE_INSTANCE_GET_CLASS( ( obj ), GTK_TYPE_CIFRO_SCOPE, GtkCifroScopeClass ) )
+typedef struct _GtkCifroScope GtkCifroScope;
+typedef struct _GtkCifroScopePrivate GtkCifroScopePrivate;
+typedef struct _GtkCifroScopeClass GtkCifroScopeClass;
 
+struct _GtkCifroScope
+{
+  GtkCifroArea parent_instance;
 
-typedef GtkCifroArea GtkCifroScope;
-typedef GtkCifroAreaClass GtkCifroScopeClass;
+  GtkCifroScopePrivate *priv;
+};
 
+struct _GtkCifroScopeClass
+{
+  GtkCifroAreaClass parent_class;
+};
 
-GType gtk_cifro_scope_get_type( void );
+GTK_CIFROAREA_EXPORT
+GType                  gtk_cifro_scope_get_type                (void);
 
-
-/*!
+/**
  *
  * Функция создаёт виджет \link GtkCifroScope \endlink.
  *
  * \return Указатель на созданый виджет.
  *
  */
-GtkWidget *gtk_cifro_scope_new( void );
+GTK_CIFROAREA_EXPORT
+GtkWidget             *gtk_cifro_scope_new                     (void);
 
-
-/*!
+/**
  *
  * Функция изменяет ориентацию осей осциллографа.
  *
@@ -112,11 +123,12 @@ GtkWidget *gtk_cifro_scope_new( void );
  *
  * \return Нет.
  *
-*/
-void gtk_cifro_scope_set_gravity( GtkCifroScope *cscope, GtkCifroScopeGravity gravity );
+ */
+GTK_CIFROAREA_EXPORT
+void                   gtk_cifro_scope_set_gravity             (GtkCifroScope         *cscope,
+                                                                GtkCifroScopeGravity   gravity);
 
-
-/*!
+/**
  *
  * Функция включает или выключает отображения блока с информацией о значениях под курсором.
  *
@@ -125,11 +137,12 @@ void gtk_cifro_scope_set_gravity( GtkCifroScope *cscope, GtkCifroScopeGravity gr
  *
  * \return Нет.
  *
-*/
-void gtk_cifro_scope_set_info_show( GtkCifroScope *cscope, gboolean show );
+ */
+GTK_CIFROAREA_EXPORT
+void                   gtk_cifro_scope_set_info_show           (GtkCifroScope         *cscope,
+                                                                gboolean               show);
 
-
-/*!
+/**
  *
  * Функция задаёт подписи к осям абсцисс и ординат.
  *
@@ -139,11 +152,13 @@ void gtk_cifro_scope_set_info_show( GtkCifroScope *cscope, gboolean show );
  *
  * \return Нет.
  *
-*/
-void gtk_cifro_scope_set_axis_name( GtkCifroScope *cscope, const gchar *time_axis_name, const gchar *value_axis_name );
+ */
+GTK_CIFROAREA_EXPORT
+void                   gtk_cifro_scope_set_axis_name           (GtkCifroScope         *cscope,
+                                                                const gchar           *time_axis_name,
+                                                                const gchar           *value_axis_name);
 
-
-/*!
+/**
  *
  * Функция дабавляет канал отображения данных в осциллограф.
  *
@@ -151,11 +166,11 @@ void gtk_cifro_scope_set_axis_name( GtkCifroScope *cscope, const gchar *time_axi
  *
  * \return Идентификатор канала.
  *
-*/
-gpointer gtk_cifro_scope_add_channel( GtkCifroScope *cscope );
+ */
+GTK_CIFROAREA_EXPORT
+gpointer               gtk_cifro_scope_add_channel             (GtkCifroScope         *cscope);
 
-
-/*!
+/**
  *
  * Функция удаляет канал отображения данных из осциллографа.
  *
@@ -164,11 +179,12 @@ gpointer gtk_cifro_scope_add_channel( GtkCifroScope *cscope );
  *
  * \return Нет.
  *
-*/
-void gtk_cifro_scope_remove_channel( GtkCifroScope *cscope, gpointer channel_id );
+ */
+GTK_CIFROAREA_EXPORT
+void                   gtk_cifro_scope_remove_channel          (GtkCifroScope         *cscope,
+                                                                gpointer               channel_id);
 
-
-/*!
+/**
  *
  * Функция устанавливает имя канала. Если идентификатор канала равен NULL имя устанавливается для всех каналов.
  *
@@ -178,11 +194,13 @@ void gtk_cifro_scope_remove_channel( GtkCifroScope *cscope, gpointer channel_id 
  *
  * \return Нет.
  *
-*/
-void gtk_cifro_scope_set_channel_name( GtkCifroScope *scope, gpointer channel_id, const gchar *axis_name );
+ */
+GTK_CIFROAREA_EXPORT
+void                   gtk_cifro_scope_set_channel_name        (GtkCifroScope         *scope,
+                                                                gpointer               channel_id,
+                                                                const gchar           *axis_name);
 
-
-/*!
+/**
  *
  * Функция устанавливает с какого момента времени следует отображать данные и
  * какой шаг между двумя соседними данными (частота оцифровки). Параметры задаются
@@ -196,11 +214,14 @@ void gtk_cifro_scope_set_channel_name( GtkCifroScope *scope, gpointer channel_id
  *
  * \return Нет.
  *
-*/
-void gtk_cifro_scope_set_channel_time_param( GtkCifroScope *cscope, gpointer channel_id, gfloat time_shift, gfloat time_step );
+ */
+GTK_CIFROAREA_EXPORT
+void                   gtk_cifro_scope_set_channel_time_param (GtkCifroScope          *cscope,
+                                                               gpointer                channel_id,
+                                                               gfloat                  time_shift,
+                                                               gfloat                  time_step);
 
-
-/*!
+/**
  *
  * Функция устанавливает коэффициенты на которые умножаются и сдвигаются все данные в
  * канале. Это позволяет отображать разнородные данные в одном пространстве и наглядно
@@ -214,11 +235,14 @@ void gtk_cifro_scope_set_channel_time_param( GtkCifroScope *cscope, gpointer cha
  *
  * \return Нет.
  *
-*/
-void gtk_cifro_scope_set_channel_value_param( GtkCifroScope *cscope, gpointer channel_id, gfloat value_shift, gfloat value_scale );
+ */
+GTK_CIFROAREA_EXPORT
+void                   gtk_cifro_scope_set_channel_value_param (GtkCifroScope         *cscope,
+                                                                gpointer               channel_id,
+                                                                gfloat                 value_shift,
+                                                                gfloat                 value_scale);
 
-
-/*!
+/**
  *
  * Функция устанавливает типа отображения осциллограмм. Если идентификатор канала равен NULL
  * тип отображения устанавливается для всех каналов.
@@ -229,11 +253,13 @@ void gtk_cifro_scope_set_channel_value_param( GtkCifroScope *cscope, gpointer ch
  *
  * \return Нет.
  *
-*/
-void gtk_cifro_scope_set_channel_draw_type( GtkCifroScope *cscope, gpointer channel_id, GtkCifroScopeDrawType draw_type );
+ */
+GTK_CIFROAREA_EXPORT
+void                   gtk_cifro_scope_set_channel_draw_type   (GtkCifroScope         *cscope,
+                                                                gpointer               channel_id,
+                                                                GtkCifroScopeDrawType  draw_type);
 
-
-/*!
+/**
  *
  * Функция устанавливает цвет отображения данных канала. Если идентификатор канала равен NULL
  * цвет устанавливается для всех каналов.
@@ -246,11 +272,15 @@ void gtk_cifro_scope_set_channel_draw_type( GtkCifroScope *cscope, gpointer chan
  *
  * \return Нет.
  *
-*/
-void gtk_cifro_scope_set_channel_color( GtkCifroScope *cscope, gpointer channel_id, gdouble red, gdouble green, gdouble blue );
+ */
+GTK_CIFROAREA_EXPORT
+void                   gtk_cifro_scope_set_channel_color       (GtkCifroScope         *cscope,
+                                                                gpointer               channel_id,
+                                                                gdouble                red,
+                                                                gdouble                green,
+                                                                gdouble                blue);
 
-
-/*!
+/**
  *
  * Функция устанавливает данные канала для отображения.
  *
@@ -261,11 +291,14 @@ void gtk_cifro_scope_set_channel_color( GtkCifroScope *cscope, gpointer channel_
  *
  * \return Нет.
  *
-*/
-void gtk_cifro_scope_set_channel_data( GtkCifroScope *cscope, gpointer channel_id, gint num, gfloat *values );
+ */
+GTK_CIFROAREA_EXPORT
+void                   gtk_cifro_scope_set_channel_data        (GtkCifroScope         *cscope,
+                                                                gpointer               channel_id,
+                                                                gint                   num,
+                                                                gfloat                *values);
 
-
-/*!
+/**
  *
  * Функция включает или выключает отображения данных канала. Если идентификатор канала равен NULL
  * отображение устанавливается для всех каналов.
@@ -276,11 +309,13 @@ void gtk_cifro_scope_set_channel_data( GtkCifroScope *cscope, gpointer channel_i
  *
  * \return Нет.
  *
-*/
-void gtk_cifro_scope_set_channel_show( GtkCifroScope *cscope, gpointer channel_id, gboolean show );
+ */
+GTK_CIFROAREA_EXPORT
+void                   gtk_cifro_scope_set_channel_show        (GtkCifroScope         *cscope,
+                                                                gpointer               channel_id,
+                                                                gboolean               show);
 
-
-/*!
+/**
  *
  * Функция обновляет изображение осциллографа. Функцию следует вызывать после
  * изменения данных в каналах.
@@ -289,10 +324,10 @@ void gtk_cifro_scope_set_channel_show( GtkCifroScope *cscope, gpointer channel_i
  *
  * \return Нет.
  *
-*/
-void gtk_cifro_scope_update( GtkCifroScope *cscope );
-
+ */
+GTK_CIFROAREA_EXPORT
+void                   gtk_cifro_scope_update                  (GtkCifroScope         *cscope);
 
 G_END_DECLS
 
-#endif /* _gtk_cifro_scope_h */
+#endif /* __GTK_CIFRO_SCOPE_H__ */

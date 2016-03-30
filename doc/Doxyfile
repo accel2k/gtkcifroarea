@@ -753,7 +753,7 @@ WARN_LOGFILE           =
 # spaces.
 # Note: If this tag is empty the current directory is searched.
 
-INPUT                  = ../cifroarea \
+INPUT                  = ../gtkcifroarea \
                          mainpage.doxy
 
 # This tag can be used to specify the character encoding of the source files
@@ -1979,7 +1979,7 @@ PREDEFINED             = __linux__ \
                          _WIN32 \
                          G_OS_UNIX \
                          G_OS_WIN32 \
-                         G_TRACE_USE_GTK
+                         GTK_CIFROAREA_EXPORT =
 
 # If the MACRO_EXPANSION and EXPAND_ONLY_PREDEF tags are set to YES then this
 # tag can be used to specify a list of macro names that should be expanded. The

@@ -1,7 +1,7 @@
 /*
  * GtkCifroArea - 2D layers image management library.
  *
- * Copyright 2013-2015 Andrei Fadeev (andrei@webcontrol.ru)
+ * Copyright 2013-2016 Andrei Fadeev (andrei@webcontrol.ru)
  *
  * This file is part of GtkCifroArea.
  *
@@ -28,7 +28,7 @@
  *
  * \brief Заголовочный файл общих типов GTK+ виджета осциллографа
  * \author Andrei Fadeev
- * \date 2013-2015
+ * \date 2013-2016
  * \license GNU General Public License version 3 или более поздняя<br>
  * Коммерческая лицензия - свяжитесь с автором
  *

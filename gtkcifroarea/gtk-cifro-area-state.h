@@ -1,7 +1,7 @@
 /*
  * GtkCifroArea - 2D layers image management library.
  *
- * Copyright 2013-2015 Andrei Fadeev (andrei@webcontrol.ru)
+ * Copyright 2013-2016 Andrei Fadeev (andrei@webcontrol.ru)
  *
  * This file is part of GtkCifroArea.
  *
@@ -21,31 +21,31 @@
  * Alternatively, you can license this code under a commercial license.
  * Contact the author in this case.
  *
-*/
+ */
 
 /*!
  * \file gtk-cifro-area-state.h
  *
- * \brief Заголовочный файл класса отслеживания состояния GtkCifroArea и GtkCifroImage
+ * \brief Заголовочный файл класса отслеживания состояния GtkCifroArea
  * \author Andrei Fadeev
- * \date 2013-2015
+ * \date 2013-2016
  * \license GNU General Public License version 3 или более поздняя<br>
  * Коммерческая лицензия - свяжитесь с автором
  *
- * \defgroup GtkCifroAreaState GtkCifroAreaState - класс отслеживания состояния GtkCifroArea и GtkCifroImage
+ * \defgroup GtkCifroAreaState GtkCifroAreaState - класс отслеживания состояния GtkCifroArea
  *
- * В процессе использования объектов \link GtkCifroArea \endlink или \link GtkCifroImage \endlink возникает
- * необходимость получения информации о состоянии области отображения. Класс GtkCifroAreaState может
- * использоваться объектами формирующими изображения для получения текущего состояния области отображения,
+ * В процессе использования объекта \link GtkCifroArea \endlink возникает необходимость получения
+ * информации о состоянии области отображения. Класс GtkCifroAreaState может использоваться
+ * объектами формирующими изображения для получения текущего состояния области отображения,
  * а также, для получения уведомлений об изменениях в параметрах. Кроме этого, класс GtkCifroAreaState содержит
  * вспомогательные функции для преобразования координат и расчета параметров прямоугольной координатной сетки.
  *
- * Сторонние модули должны получить указатель на объект GtkCifroAreaState из объектов \link GtkCifroArea \endlink
- * или \link GtkCifroImage \endlink при помощи соответствующих функций.
+ * Сторонние модули должны получить указатель на объект GtkCifroAreaState из объекта \link GtkCifroArea \endlink
+ * при помощи функции \link gtk_cifro_area_get_state \endlink.
  *
- * В процессе работы \link GtkCifroArea \endlink или \link GtkCifroImage \endlink будут обновлять параметры состояния
- * области отображения через вызов соответствующих функций. При изменении параметров будут посылаться сигналы с
- * новыми значениями параметров. Пользователю запрещено вызывать функции изменяющие параметры.
+ * В процессе работы \link GtkCifroArea \endlink будет обновлять параметры состояния области отображения
+ * через вызов соответствующих функций. При изменении параметров будут посылаться сигналы с новыми значениями
+ * параметров. Пользователю запрещено вызывать функции изменяющие параметры.
  *
  * Список функций и соответствующие им сигналы:
  *
@@ -68,13 +68,13 @@
  *
  * Прототипы функций обработчиков сигналов должны быть следующими:
  *
- * - "area-changed" - void area_changed_cb( GtkCifroAreaState *state, GtkCifroAreaSize *size, gpointer user_data );
- * - "visible-changed" - void visible_changed_cb( GtkCifroAreaState *state, GtkCifroAreaSize *size, gpointer user_data );
- * - "border-changed" - void border_changed_cb( GtkCifroAreaState *state, GtkCifroAreaBorder *border, gpointer user_data );
- * - "swap-changed" - void swap_changed_cb( GtkCifroAreaState *state, GtkCifroAreaSwap *swap, gpointer user_data );
- * - "angle-changed" - void angle_changed_cb( GtkCifroAreaState *state, gdouble angle, gpointer user_data );
- * - "view-limits-changed" - void view_limits_changed_cb( GtkCifroAreaState *state, GtkCifroAreaView *view, gpointer user_data ).
- * - "view-changed" - void view_changed_cb( GtkCifroAreaState *state, GtkCifroAreaView *view, gpointer user_data ).
+ * - "area-changed" - void area_changed_cb (GtkCifroAreaState *state, GtkCifroAreaSize *size, gpointer user_data);
+ * - "visible-changed" - void visible_changed_cb (GtkCifroAreaState *state, GtkCifroAreaSize *size, gpointer user_data);
+ * - "border-changed" - void border_changed_cb (GtkCifroAreaState *state, GtkCifroAreaBorder *border, gpointer user_data);
+ * - "swap-changed" - void swap_changed_cb (GtkCifroAreaState *state, GtkCifroAreaSwap *swap, gpointer user_data);
+ * - "angle-changed" - void angle_changed_cb (GtkCifroAreaState *state, gdouble angle, gpointer user_data);
+ * - "view-limits-changed" - void view_limits_changed_cb (GtkCifroAreaState *state, GtkCifroAreaView *view, gpointer user_data).
+ * - "view-changed" - void view_changed_cb (GtkCifroAreaState *state, GtkCifroAreaView *view, gpointer user_data).
  *
  * В любой момент времени можно получить значения параметров состояния области отображения при помощи функций:
  *
@@ -98,84 +98,86 @@
  * Линии толщиной 1 пиксель библиотека cairo рисует без размытия если координата равна
  * ( целое число +- 0,5 ), функция #gtk_cifro_area_state_point_to_cairo выравнивает координату по этому правилу.
  *
-*/
+ * Объект не поддерживает работу в многопоточном режиме.
+ *
+ */
 
-#ifndef _gtk_cifro_area_state_h
-#define _gtk_cifro_area_state_h
+#ifndef __GTK_CIFRO_AREA_STATE_H__
+#define __GTK_CIFRO_AREA_STATE_H__
 
 #include <glib-object.h>
 
 G_BEGIN_DECLS
 
-
-/*! \brief Структура с размерами областей \link GtkCifroArea \endlink и \link GtkCifroImage \endlink.  */
-typedef struct GtkCifroAreaSize {
-
-  gint                       width;              /*!< Ширина области (в точках). */
-  gint                       height;             /*!< Высота области (в точках). */
-
+/*! \brief Структура с размерами областей \link GtkCifroArea \endlink.  */
+typedef struct
+{
+  gint                 width;                  /*!< Ширина области (в точках). */
+  gint                 height;                 /*!< Высота области (в точках). */
 } GtkCifroAreaSize;
 
-
-/*! \brief Структура с размерами окантовки \link GtkCifroArea \endlink и \link GtkCifroImage \endlink.  */
-typedef struct GtkCifroAreaBorder {
-
-  gint                       left;               /*!< Размер окантовки слева (в точках). */
-  gint                       right;              /*!< Размер окантовки справа (в точках). */
-  gint                       top;                /*!< Размер окантовки сверху (в точках). */
-  gint                       bottom;             /*!< Размер окантовки снизу (в точках). */
-
+/*! \brief Структура с размерами окантовки \link GtkCifroArea \endlink.  */
+typedef struct
+{
+  gint                 left;                   /*!< Размер окантовки слева (в точках). */
+  gint                 right;                  /*!< Размер окантовки справа (в точках). */
+  gint                 top;                    /*!< Размер окантовки сверху (в точках). */
+  gint                 bottom;                 /*!< Размер окантовки снизу (в точках). */
 } GtkCifroAreaBorder;
 
-
-/*! \brief Структура с параметрами зеркального отражения по осям \link GtkCifroArea \endlink и \link GtkCifroImage \endlink.  */
-typedef struct GtkCifroAreaSwap {
-
-  gboolean                   swap_x;             /*!< Зеркальное отражение по оси x (TRUE если отражение установлено). */
-  gboolean                   swap_y;             /*!< Зеркальное отражение по оси y (TRUE если отражение установлено). */
-
+/*! \brief Структура с параметрами зеркального отражения по осям \link GtkCifroArea \endlink. */
+typedef struct
+{
+  gboolean             swap_x;                 /*!< Зеркальное отражение по оси x (TRUE если отражение установлено). */
+  gboolean             swap_y;                 /*!< Зеркальное отражение по оси y (TRUE если отражение установлено). */
 } GtkCifroAreaSwap;
 
-
-/*! \brief Структура с границами значений \link GtkCifroArea \endlink и \link GtkCifroImage \endlink.  */
-typedef struct GtkCifroAreaView {
-
-  gdouble                    x1;                 /*!< Меньшее значение оси x (логические координаты). */
-  gdouble                    x2;                 /*!< Большее значение оси x (логические координаты). */
-  gdouble                    y1;                 /*!< Меньшее значение оси y (логические координаты). */
-  gdouble                    y2;                 /*!< Большее значение оси y (логические координаты). */
-
+/*! \brief Структура с границами значений \link GtkCifroArea \endlink.  */
+typedef struct
+{
+  gdouble              x1;                     /*!< Меньшее значение оси x (логические координаты). */
+  gdouble              x2;                     /*!< Большее значение оси x (логические координаты). */
+  gdouble              y1;                     /*!< Меньшее значение оси y (логические координаты). */
+  gdouble              y2;                     /*!< Большее значение оси y (логические координаты). */
 } GtkCifroAreaView;
 
+#define GTK_TYPE_CIFRO_AREA_STATE             (gtk_cifro_area_state_get_type ())
+#define GTK_CIFRO_AREA_STATE(obj)             (G_TYPE_CHECK_INSTANCE_CAST ((obj), GTK_TYPE_CIFRO_AREA_STATE, GtkCifroAreaState))
+#define GTK_IS_CIFRO_AREA_STATE(obj)          (G_TYPE_CHECK_INSTANCE_TYPE ((obj), GTK_TYPE_CIFRO_AREA_STATE))
+#define GTK_CIFRO_AREA_STATE_CLASS(klass)     (G_TYPE_CHECK_CLASS_CAST ((klass), GTK_TYPE_CIFRO_AREA_STATE, GtkCifroAreaStateClass))
+#define GTK_IS_CIFRO_AREA_STATE_CLASS(klass)  (G_TYPE_CHECK_CLASS_TYPE ((klass), GTK_TYPE_CIFRO_AREA_STATE))
+#define GTK_CIFRO_AREA_STATE_GET_CLASS(obj)   (G_TYPE_INSTANCE_GET_CLASS ((obj), GTK_TYPE_CIFRO_AREA_STATE, GtkCifroAreaStateClass))
 
-#define GTK_TYPE_CIFRO_AREA_STATE                ( gtk_cifro_area_state_get_type() )
-#define GTK_CIFRO_AREA_STATE( obj )              ( G_TYPE_CHECK_INSTANCE_CAST( ( obj ), GTK_TYPE_CIFRO_AREA_STATE, GtkCifroAreaState ) )
-#define GTK_IS_CIFRO_AREA_STATE( obj )           ( G_TYPE_CHECK_INSTANCE_TYPE( ( obj ), GTK_TYPE_CIFRO_AREA_STATE ) )
-#define GTK_CIFRO_AREA_STATE_CLASS( klass )      ( G_TYPE_CHECK_CLASS_CAST( ( klass ), GTK_TYPE_CIFRO_AREA_STATE, GtkCifroAreaStateClass ) )
-#define GTK_IS_CIFRO_AREA_STATE_CLASS( klass )   ( G_TYPE_CHECK_CLASS_TYPE( ( klass ), GTK_TYPE_CIFRO_AREA_STATE ) )
-#define GTK_CIFRO_AREA_STATE_GET_CLASS( obj )    ( G_TYPE_INSTANCE_GET_CLASS( ( obj ), GTK_TYPE_CIFRO_AREA_STATE, GtkCifroAreaStateClass ) )
+typedef struct _GtkCifroAreaState GtkCifroAreaState;
+typedef struct _GtkCifroAreaStatePrivate GtkCifroAreaStatePrivate;
+typedef struct _GtkCifroAreaStateClass GtkCifroAreaStateClass;
 
+struct _GtkCifroAreaState
+{
+  GObject parent_instance;
 
-typedef GObject GtkCifroAreaState;
-typedef GObjectClass GtkCifroAreaStateClass;
+  GtkCifroAreaStatePrivate *priv;
+};
 
+struct _GtkCifroAreaStateClass
+{
+  GObjectClass parent_class;
+};
 
-GType gtk_cifro_area_state_get_type( void );
-
+GType                  gtk_cifro_area_state_get_type                   (void);
 
 /*!
  *
  * Функция создаёт новый объект \link GtkCifroAreaState \endlink. Объект должен быть
  * удалён функцией g_object_unref по окончанию использования.
  *
- * Пользователи \link GtkCifroArea \endlink или \link GtkCifroImage \endlink не должны использовать
+ * Пользователи \link GtkCifroArea \endlink не должны использовать
  * эту функцию (см. описание \link GtkCifroAreaState \endlink).
  *
  * \return Указатель на объект \link GtkCifroAreaState \endlink.
  *
-*/
-GtkCifroAreaState *gtk_cifro_area_state_new( void );
-
+ */
+GtkCifroAreaState     *gtk_cifro_area_state_new                        (void);
 
 /*!
  *
@@ -187,9 +189,10 @@ GtkCifroAreaState *gtk_cifro_area_state_new( void );
  *
  * \return Нет.
  *
-*/
-void gtk_cifro_area_state_set_area_size( GtkCifroAreaState *state, gint width, gint height );
-
+ */
+void                   gtk_cifro_area_state_set_area_size              (GtkCifroAreaState     *state,
+                                                                        gint                   width,
+                                                                        gint                   height);
 
 /*!
  *
@@ -201,9 +204,10 @@ void gtk_cifro_area_state_set_area_size( GtkCifroAreaState *state, gint width, g
  *
  * \return Нет.
  *
-*/
-void gtk_cifro_area_state_get_area_size( GtkCifroAreaState *state, gint *width, gint *height );
-
+ */
+void                   gtk_cifro_area_state_get_area_size              (GtkCifroAreaState     *state,
+                                                                        gint                  *width,
+                                                                        gint                  *height);
 
 /*!
  *
@@ -215,9 +219,10 @@ void gtk_cifro_area_state_get_area_size( GtkCifroAreaState *state, gint *width, 
  *
  * \return Нет.
  *
-*/
-void gtk_cifro_area_state_set_visible_size( GtkCifroAreaState *state, gint width, gint height );
-
+ */
+void                   gtk_cifro_area_state_set_visible_size           (GtkCifroAreaState     *state,
+                                                                        gint                   width,
+                                                                        gint                   height);
 
 /*!
  *
@@ -229,9 +234,10 @@ void gtk_cifro_area_state_set_visible_size( GtkCifroAreaState *state, gint width
  *
  * \return Нет.
  *
-*/
-void gtk_cifro_area_state_get_visible_size( GtkCifroAreaState *state, gint *width, gint *height );
-
+ */
+void                   gtk_cifro_area_state_get_visible_size           (GtkCifroAreaState     *state,
+                                                                        gint                  *width,
+                                                                        gint                  *height);
 
 /*!
  *
@@ -245,9 +251,12 @@ void gtk_cifro_area_state_get_visible_size( GtkCifroAreaState *state, gint *widt
  *
  * \return Нет.
  *
-*/
-void gtk_cifro_area_state_set_border( GtkCifroAreaState *state, gint left, gint right, gint top, gint bottom );
-
+ */
+void                   gtk_cifro_area_state_set_border                 (GtkCifroAreaState     *state,
+                                                                        gint                   left,
+                                                                        gint                   right,
+                                                                        gint                   top,
+                                                                        gint                   bottom);
 
 /*!
  *
@@ -261,9 +270,12 @@ void gtk_cifro_area_state_set_border( GtkCifroAreaState *state, gint left, gint 
  *
  * \return Нет.
  *
-*/
-void gtk_cifro_area_state_get_border( GtkCifroAreaState *state, gint *left, gint *right, gint *top, gint *bottom );
-
+ */
+void                   gtk_cifro_area_state_get_border                 (GtkCifroAreaState     *state,
+                                                                        gint                  *left,
+                                                                        gint                  *right,
+                                                                        gint                  *top,
+                                                                        gint                  *bottom);
 
 /*!
  *
@@ -275,9 +287,10 @@ void gtk_cifro_area_state_get_border( GtkCifroAreaState *state, gint *left, gint
  *
  * \return Нет.
  *
-*/
-void gtk_cifro_area_state_set_swap( GtkCifroAreaState *state, gboolean swap_x, gboolean swap_y );
-
+ */
+void                   gtk_cifro_area_state_set_swap                   (GtkCifroAreaState     *state,
+                                                                        gboolean               swap_x,
+                                                                        gboolean               swap_y);
 
 /*!
  *
@@ -289,9 +302,10 @@ void gtk_cifro_area_state_set_swap( GtkCifroAreaState *state, gboolean swap_x, g
  *
  * \return Нет.
  *
-*/
-void gtk_cifro_area_state_get_swap( GtkCifroAreaState *state, gboolean *swap_x, gboolean *swap_y );
-
+ */
+void                   gtk_cifro_area_state_get_swap                   (GtkCifroAreaState     *state,
+                                                                        gboolean              *swap_x,
+                                                                        gboolean              *swap_y);
 
 /*!
  *
@@ -302,9 +316,9 @@ void gtk_cifro_area_state_get_swap( GtkCifroAreaState *state, gboolean *swap_x, 
  *
  * \return Нет.
  *
-*/
-void gtk_cifro_area_state_set_angle( GtkCifroAreaState *state, gdouble angle );
-
+ */
+void                   gtk_cifro_area_state_set_angle                  (GtkCifroAreaState     *state,
+                                                                        gdouble                angle);
 
 /*!
  *
@@ -314,9 +328,8 @@ void gtk_cifro_area_state_set_angle( GtkCifroAreaState *state, gdouble angle );
  *
  * \return Угол в радианах на который производится поворот.
  *
-*/
-gdouble gtk_cifro_area_state_get_angle( GtkCifroAreaState *state );
-
+ */
+gdouble                gtk_cifro_area_state_get_angle                  (GtkCifroAreaState     *state);
 
 /*!
  *
@@ -330,9 +343,12 @@ gdouble gtk_cifro_area_state_get_angle( GtkCifroAreaState *state );
  *
  * \return Нет.
  *
-*/
-void gtk_cifro_area_state_set_view_limits( GtkCifroAreaState *state, gdouble min_x, gdouble max_x, gdouble min_y, gdouble max_y );
-
+ */
+void                   gtk_cifro_area_state_set_view_limits            (GtkCifroAreaState     *state,
+                                                                        gdouble                min_x,
+                                                                        gdouble                max_x,
+                                                                        gdouble                min_y,
+                                                                        gdouble                max_y);
 
 /*!
  *
@@ -346,9 +362,12 @@ void gtk_cifro_area_state_set_view_limits( GtkCifroAreaState *state, gdouble min
  *
  * \return Нет.
  *
-*/
-void gtk_cifro_area_state_get_view_limits( GtkCifroAreaState *state, gdouble *min_x, gdouble *max_x, gdouble *min_y, gdouble *max_y );
-
+ */
+void                   gtk_cifro_area_state_get_view_limits            (GtkCifroAreaState     *state,
+                                                                        gdouble               *min_x,
+                                                                        gdouble               *max_x,
+                                                                        gdouble               *min_y,
+                                                                        gdouble               *max_y);
 
 /*!
  *
@@ -362,9 +381,12 @@ void gtk_cifro_area_state_get_view_limits( GtkCifroAreaState *state, gdouble *mi
  *
  * \return Нет.
  *
-*/
-void gtk_cifro_area_state_set_view( GtkCifroAreaState *state, gdouble from_x, gdouble to_x, gdouble from_y, gdouble to_y );
-
+ */
+void                   gtk_cifro_area_state_set_view                   (GtkCifroAreaState     *state,
+                                                                        gdouble                from_x,
+                                                                        gdouble                to_x,
+                                                                        gdouble                from_y,
+                                                                        gdouble                to_y);
 
 /*!
  *
@@ -378,9 +400,12 @@ void gtk_cifro_area_state_set_view( GtkCifroAreaState *state, gdouble from_x, gd
  *
  * \return Нет.
  *
-*/
-void gtk_cifro_area_state_get_view( GtkCifroAreaState *state, gdouble *from_x, gdouble *to_x, gdouble *from_y, gdouble *to_y );
-
+ */
+void                   gtk_cifro_area_state_get_view                   (GtkCifroAreaState     *state,
+                                                                        gdouble               *from_x,
+                                                                        gdouble               *to_x,
+                                                                        gdouble               *from_y,
+                                                                        gdouble               *to_y);
 
 /*!
  *
@@ -392,14 +417,15 @@ void gtk_cifro_area_state_get_view( GtkCifroAreaState *state, gdouble *from_x, g
  *
  * \return Нет.
  *
-*/
-void gtk_cifro_area_state_get_scale( GtkCifroAreaState *state, gdouble *scale_x, gdouble *scale_y );
-
+ */
+void                   gtk_cifro_area_state_get_scale                  (GtkCifroAreaState     *state,
+                                                                        gdouble               *scale_x,
+                                                                        gdouble               *scale_y);
 
 /*!
  *
  * Функция преобразовает координаты из прямоугольной системы окна в логические координаты
- * отображаемые в объекте \link GtkCifroArea \endlink или \link GtkCifroImage \endlink.
+ * отображаемые в объекте \link GtkCifroArea \endlink.
  *
  * \param state указатель на объект \link GtkCifroAreaState \endlink;
  * \param x координата x в системе координат окна;
@@ -409,14 +435,17 @@ void gtk_cifro_area_state_get_scale( GtkCifroAreaState *state, gdouble *scale_x,
  *
  * \return Нет.
  *
-*/
-void gtk_cifro_area_state_point_to_value( GtkCifroAreaState *state, gdouble x, gdouble y, gdouble *x_val, gdouble *y_val );
-
+ */
+void                   gtk_cifro_area_state_point_to_value             (GtkCifroAreaState     *state,
+                                                                        gdouble                x,
+                                                                        gdouble                y,
+                                                                        gdouble               *x_val,
+                                                                        gdouble               *y_val);
 
 /*!
  *
- * Функция преобразовает координаты из логических, отображаемых в объекте \link GtkCifroArea \endlink или
- * \link GtkCifroImage \endlink в прямоугольную систему координат окна.
+ * Функция преобразовает координаты из логических, отображаемых в объекте
+ * \link GtkCifroArea \endlink  в прямоугольную систему координат окна.
  *
  * \param state указатель на объект \link GtkCifroAreaState \endlink;
  * \param x координата x в системе координат окна или NULL;
@@ -426,14 +455,17 @@ void gtk_cifro_area_state_point_to_value( GtkCifroAreaState *state, gdouble x, g
  *
  * \return Нет.
  *
-*/
-void gtk_cifro_area_state_value_to_point( GtkCifroAreaState *state, gdouble *x, gdouble *y, gdouble x_val, gdouble y_val );
-
+ */
+void                   gtk_cifro_area_state_value_to_point             (GtkCifroAreaState     *state,
+                                                                        gdouble               *x,
+                                                                        gdouble               *y,
+                                                                        gdouble                x_val,
+                                                                        gdouble                y_val);
 
 /*!
  *
- * Функция преобразовает координаты из прямоугольной системы видимой области в логические координаты
- * отображаемые в объекте \link GtkCifroArea \endlink или \link GtkCifroImage \endlink.
+ * Функция преобразовает координаты из прямоугольной системы видимой области
+ * в логические координаты отображаемые в объекте \link GtkCifroArea \endlink.
  *
  * \param state указатель на объект \link GtkCifroAreaState \endlink;
  * \param x координата x в системе координат видимой области;
@@ -443,14 +475,17 @@ void gtk_cifro_area_state_value_to_point( GtkCifroAreaState *state, gdouble *x, 
  *
  * \return Нет.
  *
-*/
-void gtk_cifro_area_state_visible_point_to_value( GtkCifroAreaState *state, gdouble x, gdouble y, gdouble *x_val, gdouble *y_val );
-
+ */
+void                   gtk_cifro_area_state_visible_point_to_value     (GtkCifroAreaState     *state,
+                                                                        gdouble                x,
+                                                                        gdouble                y,
+                                                                        gdouble               *x_val,
+                                                                        gdouble               *y_val);
 
 /*!
  *
- * Функция преобразовает координаты из логических, отображаемых в объекте \link GtkCifroArea \endlink или
- * \link GtkCifroImage \endlink в прямоугольную систему координат видимой области.
+ * Функция преобразовает координаты из логических, отображаемых в объекте
+ * \link GtkCifroArea \endlink в прямоугольную систему координат видимой области.
  *
  * \param state указатель на объект \link GtkCifroAreaState \endlink;
  * \param x координата x в системе координат видимой области или NULL;
@@ -460,9 +495,12 @@ void gtk_cifro_area_state_visible_point_to_value( GtkCifroAreaState *state, gdou
  *
  * \return Нет.
  *
-*/
-void gtk_cifro_area_state_visible_value_to_point( GtkCifroAreaState *state, gdouble *x, gdouble *y, gdouble x_val, gdouble y_val );
-
+ */
+void                   gtk_cifro_area_state_visible_value_to_point     (GtkCifroAreaState     *state,
+                                                                        gdouble               *x,
+                                                                        gdouble               *y,
+                                                                        gdouble                x_val,
+                                                                        gdouble                y_val);
 
 /*!
  *
@@ -481,9 +519,13 @@ void gtk_cifro_area_state_visible_value_to_point( GtkCifroAreaState *state, gdou
  *
  * \return Нет.
  *
-*/
-void gtk_cifro_area_state_get_axis_step( gdouble scale, gdouble step_width, gdouble *from, gdouble *step, gint *range, gint *power );
-
+ */
+void                   gtk_cifro_area_state_get_axis_step              (gdouble                scale,
+                                                                        gdouble                step_width,
+                                                                        gdouble               *from,
+                                                                        gdouble               *step,
+                                                                        gint                  *range,
+                                                                        gint                  *power);
 
 /*!
  *
@@ -493,10 +535,9 @@ void gtk_cifro_area_state_get_axis_step( gdouble scale, gdouble step_width, gdou
  *
  * \return Координата для использования в библиотеке cairo.
  *
-*/
-gdouble gtk_cifro_area_state_point_to_cairo( gdouble point );
-
+ */
+gdouble                gtk_cifro_area_state_point_to_cairo             (gdouble                point);
 
 G_END_DECLS
 
-#endif // _gtk_cifro_area_state_h
+#endif /* __GTK_CIFRO_AREA_STATE_H__ */
