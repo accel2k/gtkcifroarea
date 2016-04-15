@@ -134,7 +134,6 @@
 
 #include <gtk/gtk.h>
 #include <gtk-cifro-area-state.h>
-#include <gtk-cifro-area-exports.h>
 
 G_BEGIN_DECLS
 

@@ -106,6 +106,7 @@
 #define __GTK_CIFRO_AREA_STATE_H__
 
 #include <glib-object.h>
+#include <gtk-cifro-area-exports.h>
 
 G_BEGIN_DECLS
 
@@ -164,6 +165,7 @@ struct _GtkCifroAreaStateClass
   GObjectClass parent_class;
 };
 
+GTK_CIFROAREA_EXPORT
 GType                  gtk_cifro_area_state_get_type                   (void);
 
 /*!
@@ -177,6 +179,7 @@ GType                  gtk_cifro_area_state_get_type                   (void);
  * \return Указатель на объект \link GtkCifroAreaState \endlink.
  *
  */
+GTK_CIFROAREA_EXPORT
 GtkCifroAreaState     *gtk_cifro_area_state_new                        (void);
 
 /*!
@@ -190,6 +193,7 @@ GtkCifroAreaState     *gtk_cifro_area_state_new                        (void);
  * \return Нет.
  *
  */
+GTK_CIFROAREA_EXPORT
 void                   gtk_cifro_area_state_set_area_size              (GtkCifroAreaState     *state,
                                                                         gint                   width,
                                                                         gint                   height);
@@ -205,6 +209,7 @@ void                   gtk_cifro_area_state_set_area_size              (GtkCifro
  * \return Нет.
  *
  */
+GTK_CIFROAREA_EXPORT
 void                   gtk_cifro_area_state_get_area_size              (GtkCifroAreaState     *state,
                                                                         gint                  *width,
                                                                         gint                  *height);
@@ -220,6 +225,7 @@ void                   gtk_cifro_area_state_get_area_size              (GtkCifro
  * \return Нет.
  *
  */
+GTK_CIFROAREA_EXPORT
 void                   gtk_cifro_area_state_set_visible_size           (GtkCifroAreaState     *state,
                                                                         gint                   width,
                                                                         gint                   height);
@@ -235,6 +241,7 @@ void                   gtk_cifro_area_state_set_visible_size           (GtkCifro
  * \return Нет.
  *
  */
+GTK_CIFROAREA_EXPORT
 void                   gtk_cifro_area_state_get_visible_size           (GtkCifroAreaState     *state,
                                                                         gint                  *width,
                                                                         gint                  *height);
@@ -252,6 +259,7 @@ void                   gtk_cifro_area_state_get_visible_size           (GtkCifro
  * \return Нет.
  *
  */
+GTK_CIFROAREA_EXPORT
 void                   gtk_cifro_area_state_set_border                 (GtkCifroAreaState     *state,
                                                                         gint                   left,
                                                                         gint                   right,
@@ -271,6 +279,7 @@ void                   gtk_cifro_area_state_set_border                 (GtkCifro
  * \return Нет.
  *
  */
+GTK_CIFROAREA_EXPORT
 void                   gtk_cifro_area_state_get_border                 (GtkCifroAreaState     *state,
                                                                         gint                  *left,
                                                                         gint                  *right,
@@ -288,6 +297,7 @@ void                   gtk_cifro_area_state_get_border                 (GtkCifro
  * \return Нет.
  *
  */
+GTK_CIFROAREA_EXPORT
 void                   gtk_cifro_area_state_set_swap                   (GtkCifroAreaState     *state,
                                                                         gboolean               swap_x,
                                                                         gboolean               swap_y);
@@ -303,6 +313,7 @@ void                   gtk_cifro_area_state_set_swap                   (GtkCifro
  * \return Нет.
  *
  */
+GTK_CIFROAREA_EXPORT
 void                   gtk_cifro_area_state_get_swap                   (GtkCifroAreaState     *state,
                                                                         gboolean              *swap_x,
                                                                         gboolean              *swap_y);
@@ -317,6 +328,7 @@ void                   gtk_cifro_area_state_get_swap                   (GtkCifro
  * \return Нет.
  *
  */
+GTK_CIFROAREA_EXPORT
 void                   gtk_cifro_area_state_set_angle                  (GtkCifroAreaState     *state,
                                                                         gdouble                angle);
 
@@ -329,6 +341,7 @@ void                   gtk_cifro_area_state_set_angle                  (GtkCifro
  * \return Угол в радианах на который производится поворот.
  *
  */
+GTK_CIFROAREA_EXPORT
 gdouble                gtk_cifro_area_state_get_angle                  (GtkCifroAreaState     *state);
 
 /*!
@@ -344,6 +357,7 @@ gdouble                gtk_cifro_area_state_get_angle                  (GtkCifro
  * \return Нет.
  *
  */
+GTK_CIFROAREA_EXPORT
 void                   gtk_cifro_area_state_set_view_limits            (GtkCifroAreaState     *state,
                                                                         gdouble                min_x,
                                                                         gdouble                max_x,
@@ -363,6 +377,7 @@ void                   gtk_cifro_area_state_set_view_limits            (GtkCifro
  * \return Нет.
  *
  */
+GTK_CIFROAREA_EXPORT
 void                   gtk_cifro_area_state_get_view_limits            (GtkCifroAreaState     *state,
                                                                         gdouble               *min_x,
                                                                         gdouble               *max_x,
@@ -382,6 +397,7 @@ void                   gtk_cifro_area_state_get_view_limits            (GtkCifro
  * \return Нет.
  *
  */
+GTK_CIFROAREA_EXPORT
 void                   gtk_cifro_area_state_set_view                   (GtkCifroAreaState     *state,
                                                                         gdouble                from_x,
                                                                         gdouble                to_x,
@@ -401,6 +417,7 @@ void                   gtk_cifro_area_state_set_view                   (GtkCifro
  * \return Нет.
  *
  */
+GTK_CIFROAREA_EXPORT
 void                   gtk_cifro_area_state_get_view                   (GtkCifroAreaState     *state,
                                                                         gdouble               *from_x,
                                                                         gdouble               *to_x,
@@ -418,6 +435,7 @@ void                   gtk_cifro_area_state_get_view                   (GtkCifro
  * \return Нет.
  *
  */
+GTK_CIFROAREA_EXPORT
 void                   gtk_cifro_area_state_get_scale                  (GtkCifroAreaState     *state,
                                                                         gdouble               *scale_x,
                                                                         gdouble               *scale_y);
@@ -436,6 +454,7 @@ void                   gtk_cifro_area_state_get_scale                  (GtkCifro
  * \return Нет.
  *
  */
+GTK_CIFROAREA_EXPORT
 void                   gtk_cifro_area_state_point_to_value             (GtkCifroAreaState     *state,
                                                                         gdouble                x,
                                                                         gdouble                y,
@@ -456,6 +475,7 @@ void                   gtk_cifro_area_state_point_to_value             (GtkCifro
  * \return Нет.
  *
  */
+GTK_CIFROAREA_EXPORT
 void                   gtk_cifro_area_state_value_to_point             (GtkCifroAreaState     *state,
                                                                         gdouble               *x,
                                                                         gdouble               *y,
@@ -476,6 +496,7 @@ void                   gtk_cifro_area_state_value_to_point             (GtkCifro
  * \return Нет.
  *
  */
+GTK_CIFROAREA_EXPORT
 void                   gtk_cifro_area_state_visible_point_to_value     (GtkCifroAreaState     *state,
                                                                         gdouble                x,
                                                                         gdouble                y,
@@ -496,6 +517,7 @@ void                   gtk_cifro_area_state_visible_point_to_value     (GtkCifro
  * \return Нет.
  *
  */
+GTK_CIFROAREA_EXPORT
 void                   gtk_cifro_area_state_visible_value_to_point     (GtkCifroAreaState     *state,
                                                                         gdouble               *x,
                                                                         gdouble               *y,
@@ -520,6 +542,7 @@ void                   gtk_cifro_area_state_visible_value_to_point     (GtkCifro
  * \return Нет.
  *
  */
+GTK_CIFROAREA_EXPORT
 void                   gtk_cifro_area_state_get_axis_step              (gdouble                scale,
                                                                         gdouble                step_width,
                                                                         gdouble               *from,
@@ -536,6 +559,7 @@ void                   gtk_cifro_area_state_get_axis_step              (gdouble 
  * \return Координата для использования в библиотеке cairo.
  *
  */
+GTK_CIFROAREA_EXPORT
 gdouble                gtk_cifro_area_state_point_to_cairo             (gdouble                point);
 
 G_END_DECLS

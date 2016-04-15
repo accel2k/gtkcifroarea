@@ -74,7 +74,6 @@
 
 #include <gtk-cifro-area.h>
 #include <gtk-cifro-scope-types.h>
-#include <gtk-cifro-area-exports.h>
 
 G_BEGIN_DECLS
 
