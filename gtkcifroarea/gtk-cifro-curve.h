@@ -68,12 +68,31 @@
 #ifndef __GTK_CIFRO_CURVE_H__
 #define __GTK_CIFRO_CURVE_H__
 
-#include <gtk/gtk.h>
-
 #include <gtk-cifro-scope.h>
-#include <gtk-cifro-curve-types.h>
 
 G_BEGIN_DECLS
+
+/** \brief Структура с описанием точки. */
+typedef struct
+{
+  gdouble              x;                                      /**< X координата точки; */
+  gdouble              y;                                      /**< Y координата точки. */
+} GtkCifroCurvePoint;
+
+/**
+ *
+ * Callback функция для расчета аналитической кривой.
+ *
+ * \param param - переменная функции;
+ * \param points - массив точек параметров функции;
+ * \param curve_data - данные пользователя.
+ *
+ * \return значение функции.
+ *
+ */
+typedef gdouble        (*GtkCifroCurveFunc)                    (gdouble        param,
+                                                                GArray        *points,
+                                                                gpointer       curve_data);
 
 #define GTK_TYPE_CIFRO_CURVE             (gtk_cifro_curve_get_type ())
 #define GTK_CIFRO_CURVE(obj)             (G_TYPE_CHECK_INSTANCE_CAST((obj), GTK_TYPE_CIFRO_CURVE, GtkCifroCurve))

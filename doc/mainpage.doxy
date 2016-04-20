@@ -38,22 +38,16 @@
  * Само формирование изображения должно осуществляться внешними обработчиками сигналов.
  * \link GtkCifroArea \endlink использует следующие сигналы:
  *
- * - "check-visible-redraw" - проверка необходимости перерисовки видимой области;
- * - "check-area-redraw" - проверка необходимости перерисовки области виджета (изображения);
  * - "visible-draw" - формирование изображения в видимой области;
  * - "area-draw" - формирование изображения в области виджета;
  *
  * Прототипы функций обработчиков сигналов должны быть следующими:
  *
- * - "check-visible-redraw" - gboolean check_visible_redraw_cb (GObject *object, gpointer user_data);
- * - "check-area-redraw" - gboolean check_area_redraw_cb (GObject *object, gpointer user_data);
- * - "visible-draw" - void visible_draw_cb (GObject *object, cairo_t *cairo, gpointer user_data);
- * - "area-draw" - void area_draw_cb (GObject *object, cairo_t *cairo, gpointer user_data).
+ * - "visible-draw" - void visible_draw_cb (GtkWidget *widget, cairo_t *cairo, gpointer user_data);
+ * - "area-draw" - void area_draw_cb (GtkWidget *widget, cairo_t *cairo, gpointer user_data).
  *
- * Обработчики событий "check-visible-redraw" и "check-area-redraw" должны возвращать значение TRUE если
- * формируемое изображение изменилось. Обработчики "visible-draw" и "area-draw" вызываются для формирования
- * изображения. В эти обработчики передаётся указатель на объект cairo, который может использоваться для
- * формирования изображения.
+ * Обработчики "visible-draw" и "area-draw" вызываются для формирования изображения. В эти обработчики
+ * передаётся указатель на объект cairo, который может использоваться для формирования изображения.
  *
  * В обработчик "visible-draw" передаётся указатель на объект cairo_t для поверхности cairo_image_surface_t.
  * Обработчик может вызвать функцию cairo_image_surface_get_data для получения указателя на область памяти

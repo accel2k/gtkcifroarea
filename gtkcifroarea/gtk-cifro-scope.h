@@ -61,7 +61,7 @@
  * как подпись к значению. Имя задаётся функцией #gtk_cifro_scope_set_channel_name.
  *
  * Данные для отображения задаются функцией #gtk_cifro_scope_set_channel_data. После того как данные для всех каналов
- * определены необходимо вызвать функцию #gtk_cifro_scope_update для обновления изображения.
+ * определены необходимо вызвать функцию gtk_widget_queue_update для обновления изображения.
  *
  * Виджет использует шрифт и цвета текущей темы GTK+.
  *
@@ -70,12 +70,29 @@
 #ifndef __GTK_CIFRO_SCOPE_H__
 #define __GTK_CIFRO_SCOPE_H__
 
-#include <gtk/gtk.h>
-
 #include <gtk-cifro-area.h>
-#include <gtk-cifro-scope-types.h>
 
 G_BEGIN_DECLS
+
+/*! \brief Типы ориентации осей осциллографа */
+typedef enum
+{
+  GTK_CIFRO_SCOPE_GRAVITY_RIGHT_UP = 1,                        /*!< Ось X - вправо, ось Y - вверх */
+  GTK_CIFRO_SCOPE_GRAVITY_LEFT_UP,                             /*!< Ось X - влево,  ось Y - вверх */
+  GTK_CIFRO_SCOPE_GRAVITY_RIGHT_DOWN,                          /*!< Ось X - вправо, ось Y - вниз */
+  GTK_CIFRO_SCOPE_GRAVITY_LEFT_DOWN,                           /*!< Ось X - влево,  ось Y - вниз */
+  GTK_CIFRO_SCOPE_GRAVITY_UP_RIGHT,                            /*!< Ось X - вверх,  ось Y - вправо */
+  GTK_CIFRO_SCOPE_GRAVITY_UP_LEFT,                             /*!< Ось X - вверх,  ось Y - влево */
+  GTK_CIFRO_SCOPE_GRAVITY_DOWN_RIGHT,                          /*!< Ось X - вниз,   ось Y - вправо */
+  GTK_CIFRO_SCOPE_GRAVITY_DOWN_LEFT                            /*!< Ось X - вниз,   ось Y - влево */
+} GtkCifroScopeGravity;
+
+/*! \brief Тип изображения осциллографа */
+typedef enum
+{
+  GTK_CIFRO_SCOPE_LINED = 1,                                   /*!< Данные соединяются линиями */
+  GTK_CIFRO_SCOPE_DOTTED                                       /*!< Данные рисуются отдельными точками */
+} GtkCifroScopeDrawType;
 
 #define GTK_TYPE_CIFRO_SCOPE             (gtk_cifro_scope_get_type ())
 #define GTK_CIFRO_SCOPE(obj)             (G_TYPE_CHECK_INSTANCE_CAST ((obj), GTK_TYPE_CIFRO_SCOPE, GtkCifroScope))
@@ -313,19 +330,6 @@ GTK_CIFROAREA_EXPORT
 void                   gtk_cifro_scope_set_channel_show        (GtkCifroScope         *cscope,
                                                                 gpointer               channel_id,
                                                                 gboolean               show);
-
-/**
- *
- * Функция обновляет изображение осциллографа. Функцию следует вызывать после
- * изменения данных в каналах.
- *
- * \param cscope указатель на виджет \link GtkCifroScope \endlink.
- *
- * \return Нет.
- *
- */
-GTK_CIFROAREA_EXPORT
-void                   gtk_cifro_scope_update                  (GtkCifroScope         *cscope);
 
 G_END_DECLS
 

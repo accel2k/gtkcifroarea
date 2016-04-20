@@ -23,7 +23,7 @@
  *
  */
 
-/*!
+/*
  * \file cairo-sdline.c
  *
  * \brief Исходный файл функций рисования линий в image_surface тип cairo

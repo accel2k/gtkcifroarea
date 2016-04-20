@@ -223,7 +223,7 @@ update_data (gpointer user_data)
 
   j++;
 
-  gtk_cifro_scope_update (cscope);
+  gtk_widget_queue_draw (GTK_WIDGET (cscope));
 
   return TRUE;
 }

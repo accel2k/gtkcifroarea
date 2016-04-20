@@ -54,9 +54,7 @@
  * - масштабирование изображения вращением колесика мышки, с нажатой клавишей Shift - по обеим осям,
  *   Ctrl - по вертикальной оси, Alt - по горизонтальной оси.
  *
- * Создание виджета производится функцией #gtk_cifro_area_new. В процессе работы виджет отслеживает состояние области
- * отображения и передаёт эту информацию в объект \link GtkCifroAreaState \endlink. Получить указатель на объект
- * можно с помощью функции #gtk_cifro_area_get_state.
+ * Создание виджета производится функцией #gtk_cifro_area_new.
  *
  * Функции #gtk_cifro_area_set_draw_focus и #gtk_cifro_area_get_draw_focus используются для задания необходимости рисовать
  * рамку вокруг виджета, если он находится в фокусе.
@@ -72,6 +70,9 @@
  *
  * Размер окантовки устанавливается функцией #gtk_cifro_area_set_border, текущее его значение возвращает
  * функция #gtk_cifro_area_get_border.
+ *
+ * Текущий размер виджета (area) можно узнать при помощи функции #gtk_cifro_area_get_size, размер
+ * видимой области функцией #gtk_cifro_area_get_visible_size.
  *
  * При изменении размеров окна может происходить изменение коэффициента масштабирования или изменение
  * видимой области. Поведение виджета в этом случае задается функцией #gtk_cifro_area_set_scale_on_resize.
@@ -133,7 +134,7 @@
 #define __GTK_CIFRO_AREA_H__
 
 #include <gtk/gtk.h>
-#include <gtk-cifro-area-state.h>
+#include <gtk-cifro-area-exports.h>
 
 G_BEGIN_DECLS
 
@@ -172,33 +173,6 @@ GType                  gtk_cifro_area_get_type                 (void);
  */
 GTK_CIFROAREA_EXPORT
 GtkWidget              *gtk_cifro_area_new                     (void);
-
-/**
- *
- * Функция возвращает указатель на объект \link GtkCifroAreaState \endlink. Объект
- * \link GtkCifroAreaState \endlink принадлежит \link GtkCifroArea \endlink и не должен
- * удаляться после использования.
- *
- * \param carea указатель на виджет \link GtkCifroArea \endlink.
- *
- * \return Указатель на объект \link GtkCifroAreaState \endlink или NULL.
- *
- */
-GTK_CIFROAREA_EXPORT
-GtkCifroAreaState     *gtk_cifro_area_get_state                (GtkCifroArea          *carea);
-
-/**
- *
- * Функция опрашивает модули формирования изображения на предмет необходимости
- * перерисовки изображения на экране. Если перерисовка необходима, она выполняется.
- *
- * \param carea указатель на виджет \link GtkCifroArea \endlink.
- *
- * \return Нет.
- *
- */
-GTK_CIFROAREA_EXPORT
-void                   gtk_cifro_area_update                   (GtkCifroArea          *carea);
 
 /**
  *
@@ -254,6 +228,54 @@ void                   gtk_cifro_area_set_point_cursor         (GtkCifroArea    
 GTK_CIFROAREA_EXPORT
 void                   gtk_cifro_area_set_move_cursor          (GtkCifroArea          *carea,
                                                                 GdkCursor             *cursor);
+
+/*!
+ *
+ * Функция возвращает текущие значения размеров виджета.
+ *
+ * \param carea указатель на виджет \link GtkCifroArea \endlink;
+ * \param width ширина виджета или NULL;
+ * \param height высота виджета или NULL.
+ *
+ * \return Нет.
+ *
+ */
+GTK_CIFROAREA_EXPORT
+void                   gtk_cifro_area_get_size                 (GtkCifroArea          *carea,
+                                                                gint                  *width,
+                                                                gint                  *height);
+
+/*!
+ *
+ * Функция возвращает текущие значения размеров видимой области.
+ *
+ * \param carea указатель на виджет \link GtkCifroArea \endlink;
+ * \param width ширина видимой области или NULL;
+ * \param height высота видимой области или NULL.
+ *
+ * \return Нет.
+ *
+ */
+GTK_CIFROAREA_EXPORT
+void                   gtk_cifro_area_get_visible_size         (GtkCifroArea          *carea,
+                                                                gint                  *width,
+                                                                gint                  *height);
+
+/*!
+ *
+ * Функция возвращает значения текущих масштабов отображения.
+ *
+ * \param carea указатель на виджет \link GtkCifroArea \endlink;
+ * \param scale_x текущий масштаб по оси x или NULL;
+ * \param scale_y текущий масштаб по оси y или NULL;
+ *
+ * \return Нет.
+ *
+ */
+GTK_CIFROAREA_EXPORT
+void                   gtk_cifro_area_get_scale                (GtkCifroArea          *carea,
+                                                                gdouble               *scale_x,
+                                                                gdouble               *scale_y);
 
 /**
  *
@@ -794,6 +816,128 @@ void                   gtk_cifro_area_fixed_zoom               (GtkCifroArea    
                                                                 gdouble                center_val_x,
                                                                 gdouble                center_val_y,
                                                                 gboolean               zoom_in);
+
+/*!
+ *
+ * Функция преобразовает координаты из прямоугольной системы окна в логические координаты
+ * отображаемые в объекте \link GtkCifroArea \endlink.
+ *
+ * \param carea указатель на виджет \link GtkCifroArea \endlink;
+ * \param x координата x в системе координат окна;
+ * \param y координата y в системе координат окна;
+ * \param x_val координата x в логической системе координат или NULL;
+ * \param y_val координата y в логической системе координат или NULL.
+ *
+ * \return Нет.
+ *
+ */
+GTK_CIFROAREA_EXPORT
+void                   gtk_cifro_area_point_to_value             (GtkCifroArea        *carea,
+                                                                  gdouble              x,
+                                                                  gdouble              y,
+                                                                  gdouble             *x_val,
+                                                                  gdouble             *y_val);
+
+/*!
+ *
+ * Функция преобразовает координаты из логических, отображаемых в объекте
+ * \link GtkCifroArea \endlink  в прямоугольную систему координат окна.
+ *
+ * \param carea указатель на виджет \link GtkCifroArea \endlink;
+ * \param x координата x в системе координат окна или NULL;
+ * \param y координата y в системе координат окна или NULL;
+ * \param x_val координата x в логической системе координат;
+ * \param y_val координата y в логической системе координат.
+ *
+ * \return Нет.
+ *
+ */
+GTK_CIFROAREA_EXPORT
+void                   gtk_cifro_area_value_to_point             (GtkCifroArea        *carea,
+                                                                  gdouble             *x,
+                                                                  gdouble             *y,
+                                                                  gdouble              x_val,
+                                                                  gdouble              y_val);
+
+/*!
+ *
+ * Функция преобразовает координаты из прямоугольной системы видимой области
+ * в логические координаты отображаемые в объекте \link GtkCifroArea \endlink.
+ *
+ * \param carea указатель на виджет \link GtkCifroArea \endlink;
+ * \param x координата x в системе координат видимой области;
+ * \param y координата y в системе координат видимой области;
+ * \param x_val координата x в логической системе координат или NULL;
+ * \param y_val координата y в логической системе координат или NULL.
+ *
+ * \return Нет.
+ *
+ */
+GTK_CIFROAREA_EXPORT
+void                   gtk_cifro_area_visible_point_to_value     (GtkCifroArea        *carea,
+                                                                  gdouble              x,
+                                                                  gdouble              y,
+                                                                  gdouble             *x_val,
+                                                                  gdouble             *y_val);
+
+/*!
+ *
+ * Функция преобразовает координаты из логических, отображаемых в объекте
+ * \link GtkCifroArea \endlink в прямоугольную систему координат видимой области.
+ *
+ * \param carea указатель на виджет \link GtkCifroArea \endlink;
+ * \param x координата x в системе координат видимой области или NULL;
+ * \param y координата y в системе координат видимой области или NULL;
+ * \param x_val координата x в логической системе координат;
+ * \param y_val координата y в логической системе координат.
+ *
+ * \return Нет.
+ *
+ */
+GTK_CIFROAREA_EXPORT
+void                   gtk_cifro_area_visible_value_to_point     (GtkCifroArea        *carea,
+                                                                  gdouble             *x,
+                                                                  gdouble             *y,
+                                                                  gdouble              x_val,
+                                                                  gdouble              y_val);
+
+/*!
+ *
+ * Функция расчитывает параметры прямоугольной координатной сетки.
+ *
+ * В функцию должны быть переданы масштаб, желаемое расстояние между осями и начало
+ * области. Функция вернёт выровненную по шагу между линиями сетки координату первой линии.
+ * При необходимости функция вернёт шаг между линиями сетки, цену деления сетки и степень цены деления сетки.
+ *
+ * \param scale масштаб - число пикселей в одной логической единице;
+ * \param step_width желаемое расстояние между координатными осями;
+ * \param from логическая координата первой линии сетки;
+ * \param step логические шаг между линиями сетки или NULL;
+ * \param range "цена" деления координатной сетки или NULL;
+ * \param power степень "цены" деления координатной сетки или NULL.
+ *
+ * \return Нет.
+ *
+ */
+GTK_CIFROAREA_EXPORT
+void                   gtk_cifro_area_get_axis_step            (gdouble                scale,
+                                                                gdouble                step_width,
+                                                                gdouble               *from,
+                                                                gdouble               *step,
+                                                                gint                  *range,
+                                                                gint                  *power);
+
+/*!
+ *
+ * Функция выравнивает координаты для использования в библиотеке cairo.
+ *
+ * \param point координата для выравнивания.
+ *
+ * \return Координата для использования в библиотеке cairo.
+ *
+ */
+GTK_CIFROAREA_EXPORT
+gdouble                gtk_cifro_area_point_to_cairo           (gdouble                point);
 
 G_END_DECLS
 
