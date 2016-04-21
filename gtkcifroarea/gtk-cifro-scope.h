@@ -47,7 +47,15 @@
  *
  * Подписи к осям задаются функцией #gtk_cifro_scope_set_axis_name.
  *
- * Тип отображения осциллограммы (линиями или точками) устанавливается функцией #gtk_cifro_scope_set_channel_draw_type.
+ * Тип отображения осциллограммы устанавливается функцией #gtk_cifro_scope_set_channel_draw_type. Доступны следующие
+ * типы отображения:
+ *
+ * - GTK_CIFRO_SCOPE_LINED - данные отображаются линиями;
+ * - GTK_CIFRO_SCOPE_DOTTED - данные отображаются отдельными точками;
+ * - GTK_CIFRO_SCOPE_DOTTED2 - данные отображаются отдельными точками увеличенного размера;
+ * - GTK_CIFRO_SCOPE_DOTTED_LINE - данные отображаются точками соединёнными линиями;
+ * - GTK_CIFRO_SCOPE_CROSSED - данные отображаются перекрестиями;
+ * - GTK_CIFRO_SCOPE_CROSSED_LINE - данные отображаются перекрестиями соединёнными линиями.
  *
  * Параметры оцифровки данных канала устанавливаются функцией #gtk_cifro_scope_set_channel_time_param.
  *
@@ -90,8 +98,12 @@ typedef enum
 /*! \brief Тип изображения осциллографа */
 typedef enum
 {
-  GTK_CIFRO_SCOPE_LINED = 1,                                   /*!< Данные соединяются линиями */
-  GTK_CIFRO_SCOPE_DOTTED                                       /*!< Данные рисуются отдельными точками */
+  GTK_CIFRO_SCOPE_LINED = 1,                                   /*!< Данные отображаются линиями */
+  GTK_CIFRO_SCOPE_DOTTED,                                      /*!< Данные отображаются отдельными точками */
+  GTK_CIFRO_SCOPE_DOTTED2,                                     /*!< Данные отображаются отдельными точками увеличенного размера */
+  GTK_CIFRO_SCOPE_DOTTED_LINE,                                 /*!< Данные отображаются точками соединёнными линиями */
+  GTK_CIFRO_SCOPE_CROSSED,                                     /*!< Данные отображаются перекрестиями */
+  GTK_CIFRO_SCOPE_CROSSED_LINE                                 /*!< Данные отображаются перекрестиями соединёнными линиями */
 } GtkCifroScopeDrawType;
 
 #define GTK_TYPE_CIFRO_SCOPE             (gtk_cifro_scope_get_type ())

@@ -112,7 +112,12 @@ static void            gtk_cifro_scope_draw_lined_data         (GtkWidget       
                                                                 gpointer                       channel_id);
 static void            gtk_cifro_scope_draw_dotted_data        (GtkWidget                     *widget,
                                                                 cairo_sdline_surface          *surface,
-                                                                gpointer                       channel_id);
+                                                                gpointer                       channel_id,
+                                                                guint                          size);
+static void            gtk_cifro_scope_draw_crossed_data       (GtkWidget                     *widget,
+                                                                cairo_sdline_surface          *surface,
+                                                                gpointer                       channel_id,
+                                                                guint                          size);
 
 static void            gtk_cifro_scope_area_draw               (GtkWidget                     *widget,
                                                                 cairo_t                       *cairo);
@@ -1264,7 +1269,8 @@ gtk_cifro_scope_draw_lined_data (GtkWidget            *widget,
 static void
 gtk_cifro_scope_draw_dotted_data (GtkWidget            *widget,
                                   cairo_sdline_surface *surface,
-                                  gpointer              channel_id)
+                                  gpointer              channel_id,
+                                  guint                 size)
 {
   GtkCifroArea *carea = GTK_CIFRO_AREA (widget);
   GtkCifroScope *cscope = GTK_CIFRO_SCOPE (widget);
@@ -1326,7 +1332,84 @@ gtk_cifro_scope_draw_dotted_data (GtkWidget            *widget,
       x = (x - from_x) / scale_x;
       y = VALUES_DATA( i );
       y = (to_y - y) / scale_y;
-      cairo_sdline_dot (surface, x, y, values_color);
+      if (size == 0)
+        cairo_sdline_dot (surface, x, y, values_color);
+      else
+        cairo_sdline_bar (surface, x - size, y - size, x + size, y + size, values_color);
+    }
+
+  cairo_surface_mark_dirty (surface->cairo_surface);
+}
+
+/* Функция рисования осциллограмм перекрестиями. */
+static void
+gtk_cifro_scope_draw_crossed_data (GtkWidget            *widget,
+                                   cairo_sdline_surface *surface,
+                                   gpointer              channel_id,
+                                   guint                 size)
+{
+  GtkCifroArea *carea = GTK_CIFRO_AREA (widget);
+  GtkCifroScope *cscope = GTK_CIFRO_SCOPE (widget);
+  GtkCifroScopePrivate *priv = cscope->priv;
+  GtkCifroScopeChannel *channel = g_hash_table_lookup (priv->channels, GINT_TO_POINTER( channel_id ));
+
+  gdouble from_x;
+  gdouble to_x;
+  gdouble from_y;
+  gdouble to_y;
+
+  gdouble scale_x;
+  gdouble scale_y;
+
+  gfloat *values_data;
+  gint values_num;
+  gfloat times_shift;
+  gfloat times_step;
+  gfloat values_scale;
+  gfloat values_shift;
+  guint32 values_color;
+
+#define VALUES_TIME(i) ( ( i * times_step ) + times_shift )
+#define VALUES_DATA(i) ( ( values_data[i] * values_scale ) + values_shift )
+
+  gint i;
+  gint i_range_begin, i_range_end;
+  gfloat x, y;
+
+  /* Проверяем существование канала. */
+  if (channel == NULL)
+    return;
+
+  gtk_cifro_area_get_scale (carea, &scale_x, &scale_y);
+  gtk_cifro_area_get_view (carea, &from_x, &to_x, &from_y, &to_y);
+
+  values_data = channel->data;
+  values_num = channel->num;
+  times_shift = channel->time_shift;
+  times_step = channel->time_step;
+  values_scale = channel->value_scale;
+  values_shift = channel->value_shift;
+  values_color = channel->color;
+
+  i_range_begin = (from_x - times_shift) / times_step;
+  i_range_end = (to_x - times_shift) / times_step;
+
+  i_range_begin = CLAMP( i_range_begin, 0, values_num );
+  i_range_end = CLAMP( i_range_end, 0, values_num );
+
+  if (i_range_begin > i_range_end)
+    return;
+
+  for (i = i_range_begin; i < i_range_end; i++)
+    {
+      if (isnan( values_data[i] ))
+        continue;
+      x = VALUES_TIME( i );
+      x = (x - from_x) / scale_x;
+      y = VALUES_DATA( i );
+      y = (to_y - y) / scale_y;
+      cairo_sdline_h (surface, x - size, x + size, y, values_color);
+      cairo_sdline_v (surface, x, y - size, y + size, values_color);
     }
 
   cairo_surface_mark_dirty (surface->cairo_surface);
@@ -1376,10 +1459,24 @@ gtk_cifro_scope_visible_draw (GtkWidget *widget,
     {
       if (channel->show)
         {
-          if (channel->draw_type == GTK_CIFRO_SCOPE_LINED)
+          if (channel->draw_type == GTK_CIFRO_SCOPE_DOTTED)
+            gtk_cifro_scope_draw_dotted_data (widget, surface, channel_id, 0);
+          else if (channel->draw_type == GTK_CIFRO_SCOPE_DOTTED2)
+            gtk_cifro_scope_draw_dotted_data (widget, surface, channel_id, 1);
+          else if (channel->draw_type == GTK_CIFRO_SCOPE_DOTTED_LINE)
+            {
+              gtk_cifro_scope_draw_dotted_data (widget, surface, channel_id, 1);
+              gtk_cifro_scope_draw_lined_data (widget, surface, channel_id);
+            }
+          else if (channel->draw_type == GTK_CIFRO_SCOPE_CROSSED)
+            gtk_cifro_scope_draw_crossed_data (widget, surface, channel_id, 3);
+          else if (channel->draw_type == GTK_CIFRO_SCOPE_CROSSED_LINE)
+            {
+              gtk_cifro_scope_draw_crossed_data (widget, surface, channel_id, 3);
+              gtk_cifro_scope_draw_lined_data (widget, surface, channel_id);
+            }
+          else
             gtk_cifro_scope_draw_lined_data (widget, surface, channel_id);
-          else if (channel->draw_type == GTK_CIFRO_SCOPE_DOTTED)
-            gtk_cifro_scope_draw_dotted_data (widget, surface, channel_id);
         }
     }
 
@@ -1392,9 +1489,6 @@ gtk_cifro_scope_visible_draw (GtkWidget *widget,
 
   cairo_sdline_surface_destroy (surface);
 }
-
-
-
 
 /* Функция обработки сигнала изменения параметров дисплея. */
 static gboolean

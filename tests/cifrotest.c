@@ -30,7 +30,7 @@
 
 static gboolean        quit = FALSE;
 
-static gboolean        dotted = FALSE;                 /* Вид осциилограммы. */
+static gchar          *draw_type = "lined";            /* Тип отображения данных. */
 static gint            n_channels = 4;                 /* Число каналов осциллографа. */
 static gint            n_points = 1000;                /* Число точек осциллограммы. */
 
@@ -232,7 +232,6 @@ int
 main (int    argc,
       char **argv)
 {
-
   GtkWidget *window;
   GtkWidget *area;
 
@@ -247,7 +246,7 @@ main (int    argc,
     GOptionContext *context;
     GOptionEntry entries[] =
       {
-        { "dotted", 'd', 0, G_OPTION_ARG_NONE, &dotted, "Draw osciloscope data with dots", NULL },
+        { "draw-type", 'd', 0, G_OPTION_ARG_STRING, &draw_type, "Osciloscope data draw type (lined, dotted, dotted2, dotted-line, crossed, crossed-line)", NULL },
         { "channels", 'c', 0, G_OPTION_ARG_INT, &n_channels, "Number of osciloscope channels", NULL },
         { "points", 'n', 0, G_OPTION_ARG_INT, &n_points, "Number of points per channel", NULL },
         { "time", 't', 0, G_OPTION_ARG_DOUBLE, &max_time, "Maximum sampling time, ms", NULL },
@@ -335,8 +334,16 @@ main (int    argc,
   gtk_cifro_scope_set_channel_time_param (GTK_CIFRO_SCOPE (area), NULL, 0.0, max_time / (n_points - 1));
   gtk_cifro_scope_set_info_show (GTK_CIFRO_SCOPE (area), TRUE);
 
-  if (dotted)
+  if (g_strcmp0 (draw_type, "dotted") == 0)
     gtk_cifro_scope_set_channel_draw_type (GTK_CIFRO_SCOPE (area), NULL, GTK_CIFRO_SCOPE_DOTTED);
+  else if (g_strcmp0 (draw_type, "dotted2") == 0)
+    gtk_cifro_scope_set_channel_draw_type (GTK_CIFRO_SCOPE (area), NULL, GTK_CIFRO_SCOPE_DOTTED2);
+  else if (g_strcmp0 (draw_type, "dotted-line") == 0)
+    gtk_cifro_scope_set_channel_draw_type (GTK_CIFRO_SCOPE (area), NULL, GTK_CIFRO_SCOPE_DOTTED_LINE);
+  else if (g_strcmp0 (draw_type, "crossed") == 0)
+    gtk_cifro_scope_set_channel_draw_type (GTK_CIFRO_SCOPE (area), NULL, GTK_CIFRO_SCOPE_CROSSED);
+  else if (g_strcmp0 (draw_type, "crossed-line") == 0)
+    gtk_cifro_scope_set_channel_draw_type (GTK_CIFRO_SCOPE (area), NULL, GTK_CIFRO_SCOPE_CROSSED_LINE);
 
   gtk_cifro_curve_add_point (GTK_CIFRO_CURVE (area), 0.0, -max_range);
   gtk_cifro_curve_add_point (GTK_CIFRO_CURVE (area), max_time / 2.0, 0.0);
