@@ -1,36 +1,11 @@
 
 #
-# Marshaller generation utility.
-find_program (MARSHAL_COMPILER glib-genmarshal)
-if (${MARSHAL_COMPILER} STREQUAL MARSHAL_COMPILER-NOTFOUND)
-  message (FATAL_ERROR "GLib marshallers compiler not found.")
-endif ()
-
-#
-# Marshaller files.
-file (MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/marshallers)
-include_directories (${CMAKE_BINARY_DIR}/marshallers)
-
-execute_process (COMMAND ${MARSHAL_COMPILER}
-                         --header
-                         gtk-cifro-area-marshallers.list
-                         OUTPUT_FILE ${CMAKE_BINARY_DIR}/marshallers/gtk-cifro-area-marshallers.h
-                         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-
-execute_process (COMMAND ${MARSHAL_COMPILER}
-                         --body
-                         "gtk-cifro-area-marshallers.list"
-                         OUTPUT_FILE ${CMAKE_BINARY_DIR}/marshallers/gtk-cifro-area-marshallers.c
-                         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-
-#
 # GtkCifroArea library.
 add_library (gtkcifroarea-${GTK_VERSION} SHARED
              cairo-sdline.c
              gtk-cifro-area.c
              gtk-cifro-scope.c
-             gtk-cifro-curve.c
-             ${CMAKE_BINARY_DIR}/marshallers/gtk-cifro-area-marshallers.c)
+             gtk-cifro-curve.c)
 
 target_link_libraries (gtkcifroarea-${GTK_VERSION} ${GTK_LIBRARIES})
 

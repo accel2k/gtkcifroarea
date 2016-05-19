@@ -35,7 +35,6 @@
  */
 
 #include "gtk-cifro-area.h"
-#include "gtk-cifro-area-marshallers.h"
 
 #include <gdk/gdkkeysyms.h>
 #include <string.h>
