@@ -1,7 +1,7 @@
 /*
  * GtkCifroArea - 2D layers image management library.
  *
- * Copyright 2013-2015 Andrei Fadeev (andrei@webcontrol.ru)
+ * Copyright 2013-2017 Andrei Fadeev (andrei@webcontrol.ru)
  *
  * This file is part of GtkCifroArea.
  *
@@ -38,7 +38,7 @@ static gdouble         frequency = 10.0;               /* Частота сиг�
 static gdouble         max_time = 1000.0;              /* Максимальное время отображения, мс. */
 static gdouble         max_range = 1.0;                /* Максимальный размах амплитуды, В. */
 
-static gpointer        channels[MAX_N_CHANNELS];
+static guint           channels[MAX_N_CHANNELS];
 static gfloat         *data[MAX_N_CHANNELS];
 
 /* Цвета каналов.*/
@@ -241,7 +241,6 @@ main (int    argc,
 
   /* Разбор командной строки. */
   {
-
     GError *error = NULL;
     GOptionContext *context;
     GOptionEntry entries[] =
@@ -319,31 +318,31 @@ main (int    argc,
           gtk_cifro_scope_set_channel_color (GTK_CIFRO_SCOPE (area), channels[i], red, green, blue);
           gtk_cifro_scope_set_channel_name (GTK_CIFRO_SCOPE (area), channels[i], channel_colors[i]);
         }
-
     }
 
   /* Параметры осциллографа. */
-  gtk_cifro_area_set_view_limits (GTK_CIFRO_AREA (area),
-                                  -(max_time / 100.0),
-                                   max_time + max_time / 100.0,
-                                  -(max_range + max_range / 10.0),
-                                   max_range + max_range / 10.0);
-
-  gtk_cifro_area_set_scale_limits (GTK_CIFRO_AREA (area), 0.001, 1000.0, 0.001, 1000.0);
+  gtk_cifro_area_set_view (GTK_CIFRO_AREA (area), 0.0, 1000.0, -1.0, 1.0);
+  gtk_cifro_area_control_set_scroll_mode (GTK_CIFRO_AREA_CONTROL (area), GTK_CIFRO_AREA_SCROLL_MODE_COMBINED);
+  gtk_cifro_area_control_set_scroll_mode (GTK_CIFRO_AREA_CONTROL (area), GTK_CIFRO_AREA_SCROLL_MODE_ZOOM);
+  gtk_cifro_area_control_set_move_step (GTK_CIFRO_AREA_CONTROL (area), 20);
+  gtk_cifro_area_set_scale_on_resize (GTK_CIFRO_AREA (area), FALSE);
+  gtk_cifro_scope_set_limits (GTK_CIFRO_SCOPE (area),
+                              -(max_time / 100.0), max_time + max_time / 100.0,
+                              -(max_range + max_range / 10.0), max_range + max_range / 10.0);
   gtk_cifro_scope_set_axis_name (GTK_CIFRO_SCOPE (area), "ms", "V");
-  gtk_cifro_scope_set_channel_time_param (GTK_CIFRO_SCOPE (area), NULL, 0.0, max_time / (n_points - 1));
+  gtk_cifro_scope_set_channel_time_param (GTK_CIFRO_SCOPE (area), 0, 0.0, max_time / (n_points - 1));
   gtk_cifro_scope_set_info_show (GTK_CIFRO_SCOPE (area), TRUE);
 
   if (g_strcmp0 (draw_type, "dotted") == 0)
-    gtk_cifro_scope_set_channel_draw_type (GTK_CIFRO_SCOPE (area), NULL, GTK_CIFRO_SCOPE_DOTTED);
+    gtk_cifro_scope_set_channel_draw_type (GTK_CIFRO_SCOPE (area), 0, GTK_CIFRO_SCOPE_DOTTED);
   else if (g_strcmp0 (draw_type, "dotted2") == 0)
-    gtk_cifro_scope_set_channel_draw_type (GTK_CIFRO_SCOPE (area), NULL, GTK_CIFRO_SCOPE_DOTTED2);
+    gtk_cifro_scope_set_channel_draw_type (GTK_CIFRO_SCOPE (area), 0, GTK_CIFRO_SCOPE_DOTTED2);
   else if (g_strcmp0 (draw_type, "dotted-line") == 0)
-    gtk_cifro_scope_set_channel_draw_type (GTK_CIFRO_SCOPE (area), NULL, GTK_CIFRO_SCOPE_DOTTED_LINE);
+    gtk_cifro_scope_set_channel_draw_type (GTK_CIFRO_SCOPE (area), 0, GTK_CIFRO_SCOPE_DOTTED_LINE);
   else if (g_strcmp0 (draw_type, "crossed") == 0)
-    gtk_cifro_scope_set_channel_draw_type (GTK_CIFRO_SCOPE (area), NULL, GTK_CIFRO_SCOPE_CROSSED);
+    gtk_cifro_scope_set_channel_draw_type (GTK_CIFRO_SCOPE (area), 0, GTK_CIFRO_SCOPE_CROSSED);
   else if (g_strcmp0 (draw_type, "crossed-line") == 0)
-    gtk_cifro_scope_set_channel_draw_type (GTK_CIFRO_SCOPE (area), NULL, GTK_CIFRO_SCOPE_CROSSED_LINE);
+    gtk_cifro_scope_set_channel_draw_type (GTK_CIFRO_SCOPE (area), 0, GTK_CIFRO_SCOPE_CROSSED_LINE);
 
   gtk_cifro_curve_add_point (GTK_CIFRO_CURVE (area), 0.0, -max_range);
   gtk_cifro_curve_add_point (GTK_CIFRO_CURVE (area), max_time / 2.0, 0.0);

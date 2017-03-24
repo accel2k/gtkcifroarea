@@ -1,7 +1,7 @@
 /*
  * GtkCifroArea - 2D layers image management library.
  *
- * Copyright 2013-2016 Andrei Fadeev (andrei@webcontrol.ru)
+ * Copyright 2013-2017 Andrei Fadeev (andrei@webcontrol.ru)
  *
  * This file is part of GtkCifroArea.
  *
@@ -23,14 +23,20 @@
  *
  */
 
-/*
- * \file gtk-cifro-scope.c
+/**
+ * SECTION: gtk-cifro-scope
+ * @Short_description: GTK+ виджет осциллографа
+ * @Title: GtkCifroScope
+ * @See_also: #GtkCifroArea, #GtkCifroAreaControl
  *
- * \brief Исходный файл GTK+ виджета осциллографа
- * \author Andrei Fadeev
- * \date 2013-2016
- * \license GNU General Public License version 3 или более поздняя<br>
- * Коммерческая лицензия - свяжитесь с автором
+ * CifroScope позволяет реализовывать графическое представление данных как в осциллографе.
+ * Данный виджет является наследуемым от виджета #GtkCifroAreaControl и к нему могут
+ * применяться все функции последнего. Управление виджетом осуществляется аналогично
+ * #GtkCifroAreaControl.
+ *
+ * Перед отображеним данных в осциллограф необходимо добавить каналы отображения, установить
+ * параметры отображения данных и задать сами данные. После того как данные для всех каналов
+ * определены необходимо вызвать функцию gtk_widget_queue_draw() для обновления изображения.
  *
  */
 
@@ -40,6 +46,12 @@
 #include <glib/gprintf.h>
 #include <string.h>
 #include <math.h>
+
+enum
+{
+  PROP_O,
+  PROP_GRAVITY
+};
 
 typedef struct
 {
@@ -61,32 +73,57 @@ typedef struct
 struct _GtkCifroScopePrivate
 {
   GtkCifroScopeGravity         gravity;                        /* Направление осей осциллографа. */
+  gboolean                     show_info;                      /* Показывать или нет информацию о значениях под курсором. */
+  gint32                       next_channel_id;                /* Идентификатор для нового канала. */
+
+  gdouble                      min_x;                          /* Минимально возможное значение по оси x. */
+  gdouble                      max_x;                          /* Максимально возможное значение по оси x. */
+  gdouble                      min_y;                          /* Минимально возможное значение по оси y. */
+  gdouble                      max_y;                          /* Максимально возможное значение по оси y. */
 
   GHashTable                  *channels;                       /* Данные каналов осциллографа. */
 
-  gboolean                     show_info;                      /* Показывать или нет информацию о значениях под курсором. */
-
   gint                         pointer_x;                      /* Текущее местоположение курсора, x координата. */
   gint                         pointer_y;                      /* Текущее местоположение курсора, y координата. */
-
-  gint32                       next_channel_id;                /* Идентификатор для нового канала. */
 
   PangoLayout                 *font;                           /* Раскладка шрифта. */
 
   gchar                       *x_axis_name;                    /* Подпись оси времени. */
   gchar                       *y_axis_name;                    /* Подпись оси значений. */
 
+  guint                        border_size;                    /* Размер области обрамления. */
   guint32                      border_color;                   /* Цвет обрамления области отображения данных. */
   guint32                      axis_color;                     /* Цвет осей. */
   guint32                      zero_axis_color;                /* Цвет осей для нулевых значений. */
   guint32                      text_color;                     /* Цвет подписей. */
-
 };
 
+static void            gtk_cifro_scope_set_property            (GObject                       *object,
+                                                                guint                          prop_id,
+                                                                const GValue                  *value,
+                                                                GParamSpec                    *pspec);
 static void            gtk_cifro_scope_object_constructed      (GObject                       *object);
 static void            gtk_cifro_scope_object_finalize         (GObject                       *object);
 
 static void            gtk_cifro_scope_free_channel            (gpointer                       data);
+
+static gboolean        gtk_cifro_scope_get_rotate              (GtkCifroArea                  *carea);
+
+static void            gtk_cifro_scope_get_swap                (GtkCifroArea                  *carea,
+                                                                gboolean                      *swap_x,
+                                                                gboolean                      *swap_y);
+
+static void            gtk_cifro_scope_get_border              (GtkCifroArea                  *carea,
+                                                                guint                         *top,
+                                                                guint                         *bottom,
+                                                                guint                         *left,
+                                                                guint                         *right);
+
+static void            gtk_cifro_scope_get_limits              (GtkCifroArea                  *carea,
+                                                                gdouble                       *min_x,
+                                                                gdouble                       *max_x,
+                                                                gdouble                       *min_y,
+                                                                gdouble                       *max_y);
 
 static void            gtk_cifro_scope_set_fg_color            (GtkCifroScopePrivate          *priv,
                                                                 gdouble                        red,
@@ -126,13 +163,12 @@ static void            gtk_cifro_scope_visible_draw            (GtkWidget       
 
 static gboolean        gtk_cifro_scope_configure               (GtkWidget                     *widget,
                                                                 GdkEventConfigure             *event);
-gboolean               gtk_cifro_scope_motion_notify           (GtkWidget                     *widget,
+static gboolean        gtk_cifro_scope_motion_notify           (GtkWidget                     *widget,
                                                                 GdkEventMotion                *event);
-gboolean               gtk_cifro_scope_leave_notify            (GtkWidget                     *widget,
+static gboolean        gtk_cifro_scope_leave_notify            (GtkWidget                     *widget,
                                                                 GdkEventCrossing              *event);
 
-G_DEFINE_TYPE_WITH_PRIVATE (GtkCifroScope, gtk_cifro_scope, GTK_TYPE_CIFRO_AREA)
-
+G_DEFINE_TYPE_WITH_PRIVATE (GtkCifroScope, gtk_cifro_scope, GTK_TYPE_CIFRO_AREA_CONTROL)
 
 static void
 gtk_cifro_scope_init (GtkCifroScope *cscope)
@@ -143,10 +179,45 @@ gtk_cifro_scope_init (GtkCifroScope *cscope)
 static void
 gtk_cifro_scope_class_init (GtkCifroScopeClass *klass)
 {
-  GObjectClass *object_class = G_OBJECT_CLASS( klass );
+  GObjectClass *object_class = G_OBJECT_CLASS (klass);
+  GtkCifroAreaClass *carea_class = GTK_CIFRO_AREA_CLASS (klass);
+
+  object_class->set_property = gtk_cifro_scope_set_property;
 
   object_class->constructed = gtk_cifro_scope_object_constructed;
   object_class->finalize = gtk_cifro_scope_object_finalize;
+
+  carea_class->get_rotate = gtk_cifro_scope_get_rotate;
+  carea_class->get_swap = gtk_cifro_scope_get_swap;
+  carea_class->get_border = gtk_cifro_scope_get_border;
+  carea_class->get_limits = gtk_cifro_scope_get_limits;
+
+  g_object_class_install_property (object_class, PROP_GRAVITY,
+    g_param_spec_int ("gravity", "Gravity", "Gravity",
+                      GTK_CIFRO_SCOPE_GRAVITY_RIGHT_UP, GTK_CIFRO_SCOPE_GRAVITY_DOWN_LEFT,
+                      GTK_CIFRO_SCOPE_GRAVITY_RIGHT_UP,
+                      G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
+}
+
+static void
+gtk_cifro_scope_set_property (GObject      *object,
+                              guint         prop_id,
+                              const GValue *value,
+                              GParamSpec   *pspec)
+{
+  GtkCifroScope *cscope = GTK_CIFRO_SCOPE (object);
+  GtkCifroScopePrivate *priv = cscope->priv;
+
+  switch (prop_id)
+    {
+    case PROP_GRAVITY:
+      priv->gravity = g_value_get_int (value);
+      break;
+
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+      break;
+    }
 }
 
 static void
@@ -157,18 +228,8 @@ gtk_cifro_scope_object_constructed (GObject *object)
 
   G_OBJECT_CLASS (gtk_cifro_scope_parent_class)->constructed (object);
 
-  /* Устанавливаем направления осей. */
-  gtk_cifro_scope_set_gravity (GTK_CIFRO_SCOPE (cscope), GTK_CIFRO_SCOPE_GRAVITY_RIGHT_UP);
-
   /* Параметры GtkCifroArea по умолчанию. */
-  gtk_cifro_area_set_scale_limits (GTK_CIFRO_AREA (cscope), 0.01, 100.0, 0.01, 100.0);
   gtk_cifro_area_set_scale_on_resize (GTK_CIFRO_AREA (cscope), TRUE);
-  gtk_cifro_area_set_rotation (GTK_CIFRO_AREA (cscope), FALSE);
-  gtk_cifro_area_set_scale_aspect (GTK_CIFRO_AREA (cscope), -1.0);
-  gtk_cifro_area_set_zoom_on_center (GTK_CIFRO_AREA (cscope), FALSE);
-  gtk_cifro_area_set_zoom_scale (GTK_CIFRO_AREA (cscope), 10);
-  gtk_cifro_area_set_view_limits (GTK_CIFRO_AREA (cscope), -100, 100, -100, 100);
-  gtk_cifro_area_set_view (GTK_CIFRO_AREA (cscope), -100, 100, -100, 100);
 
   /* Информация об осях. */
   priv->x_axis_name = g_strdup ("X");
@@ -219,6 +280,129 @@ gtk_cifro_scope_free_channel (gpointer data)
   g_free (channel);
 }
 
+/* Виртуальная функция для определения разрешения поворота изображения. */
+static gboolean
+gtk_cifro_scope_get_rotate (GtkCifroArea *carea)
+{
+  return FALSE;
+}
+
+/* Виртуальная функция для определения необходимости отражения изображения. */
+static void
+gtk_cifro_scope_get_swap (GtkCifroArea *carea,
+                          gboolean     *swap_x,
+                          gboolean     *swap_y)
+{
+  GtkCifroScope *cscope;
+  gboolean new_swap_x;
+  gboolean new_swap_y;
+  gdouble new_angle;
+
+  cscope = GTK_CIFRO_SCOPE (carea);
+
+  switch (cscope->priv->gravity)
+    {
+    case GTK_CIFRO_SCOPE_GRAVITY_RIGHT_UP:
+      new_swap_x = FALSE;
+      new_swap_y = FALSE;
+      new_angle = 0;
+      break;
+
+    case GTK_CIFRO_SCOPE_GRAVITY_LEFT_UP:
+      new_swap_x = TRUE;
+      new_swap_y = FALSE;
+      new_angle = 0;
+      break;
+
+    case GTK_CIFRO_SCOPE_GRAVITY_RIGHT_DOWN:
+      new_swap_x = FALSE;
+      new_swap_y = TRUE;
+      new_angle = 0;
+      break;
+
+    case GTK_CIFRO_SCOPE_GRAVITY_LEFT_DOWN:
+      new_swap_x = TRUE;
+      new_swap_y = TRUE;
+      new_angle = 0;
+      break;
+
+    case GTK_CIFRO_SCOPE_GRAVITY_UP_RIGHT:
+      new_swap_x = TRUE;
+      new_swap_y = FALSE;
+      new_angle = G_PI / 2.0;
+      break;
+
+    case GTK_CIFRO_SCOPE_GRAVITY_UP_LEFT:
+      new_swap_x = TRUE;
+      new_swap_y = TRUE;
+      new_angle = G_PI / 2.0;
+      break;
+
+    case GTK_CIFRO_SCOPE_GRAVITY_DOWN_RIGHT:
+      new_swap_x = FALSE;
+      new_swap_y = FALSE;
+      new_angle = G_PI / 2.0;
+      break;
+
+    case GTK_CIFRO_SCOPE_GRAVITY_DOWN_LEFT:
+      new_swap_x = FALSE;
+      new_swap_y = TRUE;
+      new_angle = G_PI / 2.0;
+      break;
+
+    default:
+      new_swap_x = FALSE;
+      new_swap_y = FALSE;
+      new_angle = 0;
+      break;
+    }
+
+  gtk_cifro_area_set_angle (carea, new_angle);
+
+  (swap_x != NULL) ? *swap_x = new_swap_x : 0;
+  (swap_y != NULL) ? *swap_y = new_swap_y : 0;
+}
+
+/* Виртуальная функция для определения размеров окантовки. */
+static void
+gtk_cifro_scope_get_border (GtkCifroArea *carea,
+                            guint        *top,
+                            guint        *bottom,
+                            guint        *left,
+                            guint        *right)
+{
+  GtkCifroScope *cscope;
+  guint border;
+
+  cscope = GTK_CIFRO_SCOPE (carea);
+  border = cscope->priv->border_size;
+
+  (top != NULL) ? *top = border : 0;
+  (bottom != NULL) ? *bottom = border : 0;
+  (left != NULL) ? *left = border : 0;
+  (right != NULL) ? *right = border : 0;
+}
+
+/* Виртуальная функция для определения текущих значений пределов перемещения изображения. */
+static void
+gtk_cifro_scope_get_limits (GtkCifroArea *carea,
+                            gdouble      *min_x,
+                            gdouble      *max_x,
+                            gdouble      *min_y,
+                            gdouble      *max_y)
+{
+  GtkCifroScopePrivate *priv;
+  GtkCifroScope *cscope;
+
+  cscope = GTK_CIFRO_SCOPE (carea);
+  priv = cscope->priv;
+
+  (min_x != NULL) ? *min_x = priv->min_x : 0;
+  (max_x != NULL) ? *max_x = priv->max_x : 0;
+  (min_y != NULL) ? *min_y = priv->min_y : 0;
+  (max_y != NULL) ? *max_y = priv->max_y : 0;
+}
+
 /* Функция устанавливает основной цвет для отображения графических элементов в осциллографе. */
 static void
 gtk_cifro_scope_set_fg_color (GtkCifroScopePrivate *priv,
@@ -267,14 +451,11 @@ gtk_cifro_scope_draw_hruler (GtkWidget *widget,
   GtkCifroScope *cscope = GTK_CIFRO_SCOPE (widget);
   GtkCifroScopePrivate *priv = cscope->priv;
   PangoLayout *font = priv->font;
+  guint border_size = priv->border_size;
 
-  gint area_width;
-  gint area_height;
+  guint area_width;
+  guint area_height;
 
-  gint border_left;
-  gint border_right;
-  gint border_top;
-  gint border_bottom;
 
   gdouble from_x;
   gdouble to_x;
@@ -294,7 +475,7 @@ gtk_cifro_scope_draw_hruler (GtkWidget *widget,
   gdouble axis_step;
   gdouble axis_scale;
   gdouble axis_mini_step;
-  gint axis_range;
+  guint axis_range;
   gint axis_power;
   gint axis_height;
   gint axis_count;
@@ -308,7 +489,6 @@ gtk_cifro_scope_draw_hruler (GtkWidget *widget,
   gboolean swap = FALSE;
 
   gtk_cifro_area_get_size (carea, &area_width, &area_height);
-  gtk_cifro_area_get_border (carea, &border_left, &border_right, &border_top, &border_bottom);
   gtk_cifro_area_get_view (carea, &from_x, &to_x, &from_y, &to_y);
   gtk_cifro_area_get_scale (carea, &scale_x, &scale_y);
   angle = gtk_cifro_area_get_angle (carea);
@@ -317,11 +497,11 @@ gtk_cifro_scope_draw_hruler (GtkWidget *widget,
   if (priv->font == NULL)
     return;
 
-  step = 4.0 * border_top;
+  step = 4.0 * border_size;
 
-  if (angle < -0.01 || angle > G_PI / 2.0 + 0.01)
+  if ((angle < -0.01) || (angle > (G_PI / 2.0 + 0.01)))
     return;
-  if (fabs (angle - G_PI / 2.0) < G_PI / 4.0)
+  if (fabs (angle - G_PI / 2.0) < (G_PI / 4.0))
     swap = TRUE;
 
   axis_to = swap ? to_y : to_x;
@@ -329,7 +509,11 @@ gtk_cifro_scope_draw_hruler (GtkWidget *widget,
   axis_scale = swap ? scale_y : scale_x;
 
   /* Шаг оцифровки. */
-  gtk_cifro_area_get_axis_step (axis_scale, step, &axis_from, &axis_step, &axis_range, &axis_power);
+  if (!gtk_cifro_area_get_axis_step (axis_scale, step, &axis_from,
+                                     &axis_step, &axis_range, &axis_power))
+    {
+      return;
+    }
 
   if (axis_range == 1)
     axis_range = 10;
@@ -354,19 +538,19 @@ gtk_cifro_scope_draw_hruler (GtkWidget *widget,
         gtk_cifro_area_value_to_point (carea, &axis_pos, NULL, axis, 0.0);
 
       if (axis_count % axis_range == 0)
-        axis_height = border_top / 4.0;
+        axis_height = border_size / 4.0;
       else
-        axis_height = border_top / 8.0;
+        axis_height = border_size / 8.0;
       axis_count += 1;
 
       axis += axis_mini_step;
-      if (axis_pos <= border_left + 1)
+      if (axis_pos <= (border_size + 1))
         continue;
-      if (axis_pos >= area_width - border_right - 1)
+      if (axis_pos >= (area_width - border_size - 1))
         continue;
 
-      cairo_move_to (cairo, (gint) axis_pos + 0.5, border_top + 0.5);
-      cairo_line_to (cairo, (gint) axis_pos + 0.5, border_top - axis_height + 0.5);
+      cairo_move_to (cairo, (gint) axis_pos + 0.5, border_size + 0.5);
+      cairo_line_to (cairo, (gint) axis_pos + 0.5, border_size - axis_height + 0.5);
     }
 
   cairo_stroke (cairo);
@@ -394,12 +578,12 @@ gtk_cifro_scope_draw_hruler (GtkWidget *widget,
       axis_pos -= text_width / 2;
       axis += axis_step;
 
-      if (axis_pos < border_left + 1)
+      if (axis_pos < (border_size + 1))
         continue;
-      if (axis_pos + text_width > area_width - border_right - 1)
+      if ((axis_pos + text_width) > (area_width - border_size - 1))
         continue;
 
-      cairo_move_to (cairo, axis_pos, ((0.85 * border_top) - text_height) / 2.0);
+      cairo_move_to (cairo, axis_pos, ((0.85 * border_size) - text_height) / 2.0);
       pango_cairo_show_layout (cairo, font);
     }
 
@@ -413,7 +597,7 @@ gtk_cifro_scope_draw_hruler (GtkWidget *widget,
   text_width /= PANGO_SCALE;
   text_height /= PANGO_SCALE;
 
-  cairo_move_to (cairo, area_width - border_right / 2 - text_width / 2, border_top / 2 - text_height / 2);
+  cairo_move_to (cairo, area_width - border_size / 2 - text_width / 2, border_size / 2 - text_height / 2);
   pango_cairo_show_layout (cairo, font);
 }
 
@@ -426,14 +610,10 @@ gtk_cifro_scope_draw_vruler (GtkWidget *widget,
   GtkCifroScope *cscope = GTK_CIFRO_SCOPE (widget);
   GtkCifroScopePrivate *priv = cscope->priv;
   PangoLayout *font = priv->font;
+  guint border_size = priv->border_size;
 
-  gint area_width;
-  gint area_height;
-
-  gint border_left;
-  gint border_right;
-  gint border_top;
-  gint border_bottom;
+  guint area_width;
+  guint area_height;
 
   gdouble from_x;
   gdouble to_x;
@@ -453,7 +633,7 @@ gtk_cifro_scope_draw_vruler (GtkWidget *widget,
   gdouble axis_step;
   gdouble axis_scale;
   gdouble axis_mini_step;
-  gint axis_range;
+  guint axis_range;
   gint axis_power;
   gint axis_height;
   gint axis_count;
@@ -467,7 +647,6 @@ gtk_cifro_scope_draw_vruler (GtkWidget *widget,
   gboolean swap = FALSE;
 
   gtk_cifro_area_get_size (carea, &area_width, &area_height);
-  gtk_cifro_area_get_border (carea, &border_left, &border_right, &border_top, &border_bottom);
   gtk_cifro_area_get_view (carea, &from_x, &to_x, &from_y, &to_y);
   gtk_cifro_area_get_scale (carea, &scale_x, &scale_y);
   angle = gtk_cifro_area_get_angle (carea);
@@ -476,11 +655,11 @@ gtk_cifro_scope_draw_vruler (GtkWidget *widget,
   if (priv->font == NULL)
     return;
 
-  step = 4.0 * border_top;
+  step = 4.0 * border_size;
 
-  if (angle < -0.01 || angle > G_PI / 2.0 + 0.01)
+  if ((angle < -0.01) || (angle > (G_PI / 2.0 + 0.01)))
     return;
-  if (fabs (angle - G_PI / 2.0) < G_PI / 4.0)
+  if (fabs (angle - G_PI / 2.0) < (G_PI / 4.0))
     swap = TRUE;
 
   axis_to = swap ? to_x : to_y;
@@ -488,7 +667,11 @@ gtk_cifro_scope_draw_vruler (GtkWidget *widget,
   axis_scale = swap ? scale_x : scale_y;
 
   /* Шаг оцифровки. */
-  gtk_cifro_area_get_axis_step (axis_scale, step, &axis_from, &axis_step, &axis_range, &axis_power);
+  if (!gtk_cifro_area_get_axis_step (axis_scale, step, &axis_from,
+                                     &axis_step, &axis_range, &axis_power))
+    {
+      return;
+    }
 
   if (axis_range == 1)
     axis_range = 10;
@@ -513,19 +696,19 @@ gtk_cifro_scope_draw_vruler (GtkWidget *widget,
         gtk_cifro_area_value_to_point (carea, NULL, &axis_pos, 0.0, axis);
 
       if (axis_count % axis_range == 0)
-        axis_height = border_top / 4.0;
+        axis_height = border_size / 4.0;
       else
-        axis_height = border_top / 8.0;
+        axis_height = border_size / 8.0;
       axis_count += 1;
 
       axis += axis_mini_step;
-      if (axis_pos <= border_top + 1)
+      if (axis_pos <= (border_size + 1))
         continue;
-      if (axis_pos >= area_height - border_bottom - 1)
+      if (axis_pos >= (area_height - border_size - 1))
         continue;
 
-      cairo_move_to (cairo, border_left - axis_height + 0.5, (gint) axis_pos + 0.5);
-      cairo_line_to (cairo, border_left + 0.5, (gint) axis_pos + 0.5);
+      cairo_move_to (cairo, border_size - axis_height + 0.5, (gint) axis_pos + 0.5);
+      cairo_line_to (cairo, border_size + 0.5, (gint) axis_pos + 0.5);
     }
 
   cairo_stroke (cairo);
@@ -553,13 +736,13 @@ gtk_cifro_scope_draw_vruler (GtkWidget *widget,
       axis_pos += text_width / 2;
       axis += axis_step;
 
-      if (axis_pos - text_width <= border_top + 1)
+      if ((axis_pos - text_width) <= (border_size + 1))
         continue;
-      if (axis_pos >= area_height - border_bottom - 1)
+      if (axis_pos >= (area_height - border_size - 1))
         continue;
 
       cairo_save (cairo);
-      cairo_move_to (cairo, 0.15 * border_left, axis_pos);
+      cairo_move_to (cairo, 0.15 * border_size, axis_pos);
       cairo_rotate (cairo, -G_PI / 2.0);
       pango_cairo_show_layout (cairo, font);
       cairo_restore (cairo);
@@ -574,7 +757,7 @@ gtk_cifro_scope_draw_vruler (GtkWidget *widget,
   text_width /= PANGO_SCALE;
   text_height /= PANGO_SCALE;
 
-  cairo_move_to (cairo, border_left / 2 - text_width / 2, area_height - border_top / 2 - text_height / 2);
+  cairo_move_to (cairo, border_size / 2 - text_width / 2, area_height - border_size / 2 - text_height / 2);
   pango_cairo_show_layout (cairo, font);
 }
 
@@ -586,14 +769,10 @@ gtk_cifro_scope_draw_x_pos (GtkWidget *widget,
   GtkCifroArea *carea = GTK_CIFRO_AREA (widget);
   GtkCifroScope *cscope = GTK_CIFRO_SCOPE (widget);
   GtkCifroScopePrivate *priv = cscope->priv;
+  guint border_size = priv->border_size;
 
-  gint area_width;
-  gint area_height;
-
-  gint border_left;
-  gint border_right;
-  gint border_top;
-  gint border_bottom;
+  guint area_width;
+  guint area_height;
 
   gdouble min_x;
   gdouble max_x;
@@ -621,13 +800,17 @@ gtk_cifro_scope_draw_x_pos (GtkWidget *widget,
   gboolean swap = FALSE;
 
   gtk_cifro_area_get_size (carea, &area_width, &area_height);
-  gtk_cifro_area_get_border (carea, &border_left, &border_right, &border_top, &border_bottom);
-  gtk_cifro_area_get_view_limits (carea, &min_x, &max_x, &min_y, &max_y);
+  gtk_cifro_area_get_limits (carea, &min_x, &max_x, &min_y, &max_y);
   gtk_cifro_area_get_view (carea, &from_x, &to_x, &from_y, &to_y);
   gtk_cifro_area_get_swap (carea, &swap_x, &swap_y);
   angle = gtk_cifro_area_get_angle (carea);
 
-  if (fabs (angle - G_PI / 2.0) < G_PI / 4.0)
+  from_x = MAX (from_x, min_x);
+  to_x = MIN (to_x, max_x);
+  from_y = MAX (from_y, min_y);
+  to_y = MIN (to_y, max_y);
+
+  if (fabs (angle - G_PI / 2.0) < (G_PI / 4.0))
     swap = TRUE;
 
   if (swap)
@@ -651,10 +834,10 @@ gtk_cifro_scope_draw_x_pos (GtkWidget *widget,
         }
     }
 
-  x = border_left + 0.5;
-  y = area_height - 0.75 * border_bottom + 0.5;
-  width = area_width - border_left - border_right;
-  height = border_bottom / 2;
+  x = border_size + 0.5;
+  y = area_height - 0.75 * border_size + 0.5;
+  width = area_width - 2 * border_size;
+  height = border_size / 2;
 
   cairo_sdline_set_cairo_color (cairo, priv->axis_color);
   cairo_rectangle (cairo, x, y, width, height);
@@ -673,14 +856,10 @@ gtk_cifro_scope_draw_y_pos (GtkWidget *widget,
   GtkCifroArea *carea = GTK_CIFRO_AREA (widget);
   GtkCifroScope *cscope = GTK_CIFRO_SCOPE (widget);
   GtkCifroScopePrivate *priv = cscope->priv;
+  guint border_size = priv->border_size;
 
-  gint area_width;
-  gint area_height;
-
-  gint border_left;
-  gint border_right;
-  gint border_top;
-  gint border_bottom;
+  guint area_width;
+  guint area_height;
 
   gdouble min_x;
   gdouble max_x;
@@ -708,13 +887,17 @@ gtk_cifro_scope_draw_y_pos (GtkWidget *widget,
   gboolean swap = FALSE;
 
   gtk_cifro_area_get_size (carea, &area_width, &area_height);
-  gtk_cifro_area_get_border (carea, &border_left, &border_right, &border_top, &border_bottom);
-  gtk_cifro_area_get_view_limits (carea, &min_x, &max_x, &min_y, &max_y);
+  gtk_cifro_area_get_limits (carea, &min_x, &max_x, &min_y, &max_y);
   gtk_cifro_area_get_view (carea, &from_x, &to_x, &from_y, &to_y);
   gtk_cifro_area_get_swap (carea, &swap_x, &swap_y);
   angle = gtk_cifro_area_get_angle (carea);
 
-  if (fabs (angle - G_PI / 2.0) < G_PI / 4.0)
+  from_x = MAX (from_x, min_x);
+  to_x = MIN (to_x, max_x);
+  from_y = MAX (from_y, min_y);
+  to_y = MIN (to_y, max_y);
+
+  if (fabs (angle - G_PI / 2.0) < (G_PI / 4.0))
     swap = TRUE;
 
   if (swap)
@@ -738,10 +921,10 @@ gtk_cifro_scope_draw_y_pos (GtkWidget *widget,
         }
     }
 
-  x = area_width - 0.75 * border_left + 0.5;
-  y = border_top;
-  width = border_left / 2;
-  height = area_height - border_top - border_bottom;
+  x = area_width - 0.75 * border_size + 0.5;
+  y = border_size;
+  width = border_size / 2;
+  height = area_height - 2 * border_size;
 
   cairo_sdline_set_cairo_color (cairo, priv->axis_color);
   cairo_rectangle (cairo, x, y, width, height);
@@ -766,10 +949,8 @@ gtk_cifro_scope_draw_info (GtkWidget *widget,
 
   PangoLayout *font = priv->font;
 
-  gint area_width;
-  gint area_height;
-
-  gint border_top;
+  guint area_width;
+  guint area_height;
 
   gdouble scale_x;
   gdouble scale_y;
@@ -806,17 +987,16 @@ gtk_cifro_scope_draw_info (GtkWidget *widget,
   gint text_spacing;
 
   /* Значения под курсором. */
-  if (priv->pointer_x < 0 || priv->pointer_y < 0)
+  if ((priv->pointer_x < 0) || (priv->pointer_y < 0))
     return;
 
   gtk_cifro_area_get_size (carea, &area_width, &area_height);
-  gtk_cifro_area_get_border (carea, NULL, NULL, &border_top, NULL);
   gtk_cifro_area_get_scale (carea, &scale_x, &scale_y);
   gtk_cifro_area_get_view (carea, &from_x, &to_x, &from_y, &to_y);
 
   gtk_cifro_area_point_to_value (carea, priv->pointer_x, priv->pointer_y, &value_x, &value_y);
 
-  text_spacing = border_top / 4;
+  text_spacing = priv->border_size / 4;
 
   /* Вычисляем максимальную ширину и высоту строки с текстом. */
   pango_layout_set_text (font, priv->x_axis_name, -1);
@@ -836,7 +1016,7 @@ gtk_cifro_scope_draw_info (GtkWidget *widget,
   g_hash_table_iter_init (&channels_iter, priv->channels);
   while (g_hash_table_iter_next (&channels_iter, NULL, (gpointer) &channel))
     {
-      if (channel->value_scale == 1.0 && channel->name == NULL && label_width != 0)
+      if ((channel->value_scale == 1.0) && (channel->name == NULL) && (label_width != 0))
         continue;
 
       value = value_y / channel->value_scale - channel->value_shift;
@@ -865,7 +1045,7 @@ gtk_cifro_scope_draw_info (GtkWidget *widget,
       if (text_height > font_height)
         font_height = text_height;
 
-      if (channel->value_scale != 1.0 || channel->name != NULL)
+      if ((channel->value_scale != 1.0) || (channel->name != NULL))
         n_labels += 1;
     }
 
@@ -895,16 +1075,21 @@ gtk_cifro_scope_draw_info (GtkWidget *widget,
     info_height += text_spacing;
 
   /* Проверяем размеры области отображения. */
-  if (info_width > area_width - 12 * text_spacing)
+  if (info_width > (area_width - 12 * text_spacing))
     return;
-  if (info_height > area_height - 12 * text_spacing)
+  if (info_height > (area_height - 12 * text_spacing))
     return;
 
   /* Место для отображения информации. */
-  if (priv->pointer_x > area_width - 8 * text_spacing - info_width && priv->pointer_y < 8 * text_spacing + info_height)
-    x1 = 6 * text_spacing;
+  if ((priv->pointer_x > (area_width - 8 * text_spacing - info_width)) &&
+      (priv->pointer_y < (8 * text_spacing + info_height)))
+    {
+      x1 = 6 * text_spacing;
+    }
   else
-    x1 = area_width - 6 * text_spacing - info_width;
+    {
+      x1 = area_width - 6 * text_spacing - info_width;
+    }
   y1 = 6 * text_spacing;
 
   cairo_set_line_width (cairo, 1.0);
@@ -960,7 +1145,6 @@ gtk_cifro_scope_draw_info (GtkWidget *widget,
   /* Значения для каналов с отличным от 1 масштабом. */
   if (n_labels > 2)
     {
-
       label_top += font_height + text_spacing;
       cairo_sdline_set_cairo_color (cairo, priv->axis_color);
       cairo_move_to (cairo, x1 + 4.5, label_top + 0.5);
@@ -972,7 +1156,7 @@ gtk_cifro_scope_draw_info (GtkWidget *widget,
       g_hash_table_iter_init (&channels_iter, priv->channels);
       while (g_hash_table_iter_next (&channels_iter, NULL, (gpointer) &channel))
         {
-          if (channel->value_scale == 1.0 && channel->name == NULL)
+          if ((channel->value_scale == 1.0) && (channel->name == NULL))
             continue;
 
           value = (value_y - channel->value_shift) / channel->value_scale;
@@ -1008,8 +1192,6 @@ gtk_cifro_scope_draw_axis (GtkWidget            *widget,
   GtkCifroScope *cscope = GTK_CIFRO_SCOPE (widget);
   GtkCifroScopePrivate *priv = cscope->priv;
 
-  gint border_top;
-
   gdouble scale_x;
   gdouble scale_y;
 
@@ -1023,17 +1205,16 @@ gtk_cifro_scope_draw_axis (GtkWidget            *widget,
   gdouble axis_pos;
   gdouble axis_step;
 
-  gtk_cifro_area_get_border (carea, NULL, NULL, &border_top, NULL);
   gtk_cifro_area_get_scale (carea, &scale_x, &scale_y);
   gtk_cifro_area_get_view (carea, &from_x, &to_x, &from_y, &to_y);
 
   /* Проверяем граничные условия. */
-  if (border_top == 0 || scale_x == 0.0 || scale_y == 0.0)
+  if ((priv->border_size == 0) || (scale_x <= 0.0) || (scale_y <= 0.0))
     return;
-  if (from_x == to_x || from_y == to_y)
+  if ((from_x == to_x) || (from_y == to_y))
     return;
 
-  step = 4.0 * border_top;
+  step = 4.0 * priv->border_size;
 
   /* Сетка по оси X. */
   axis = from_x;
@@ -1077,8 +1258,8 @@ gtk_cifro_scope_draw_lined_data (GtkWidget            *widget,
   GtkCifroScopePrivate *priv = cscope->priv;
   GtkCifroScopeChannel *channel = g_hash_table_lookup (priv->channels, channel_id);
 
-  gint visible_width;
-  gint visible_height;
+  guint visible_width;
+  guint visible_height;
 
   gdouble from_x;
   gdouble to_x;
@@ -1096,7 +1277,7 @@ gtk_cifro_scope_draw_lined_data (GtkWidget            *widget,
   gfloat values_shift;
   guint32 values_color;
 
-#define VALUES_DATA(i) ( ( values_data[i] * values_scale ) + values_shift )
+#define VALUES_DATA(i) ((values_data[i] * values_scale) + values_shift)
 
   gint i, j;
   gint i_range_begin, i_range_end;
@@ -1161,10 +1342,10 @@ gtk_cifro_scope_draw_lined_data (GtkWidget            *widget,
           if (i_range_begin == 0)
             continue;
 
-          if (i_range_end == values_num - 1)
+          if (i_range_end == (values_num - 1))
             break;
 
-          if (isnan( values_data[ i_range_begin ] ) || isnan( values_data[ i_range_end + 1 ] ))
+          if (isnan (values_data[i_range_begin]) || isnan (values_data[i_range_end + 1]))
             continue;
 
           /* Предыдущей точки нет, расчитаем значение и расстояние до нее от начала видимой осциллограммы.
@@ -1172,14 +1353,14 @@ gtk_cifro_scope_draw_lined_data (GtkWidget            *widget,
           if (x1 < 0)
             {
               x1 = ((times_step * floor (from_x / times_step)) - from_x) / scale_x;
-              y1 = (to_y - VALUES_DATA( i_range_begin )) / scale_y;
+              y1 = (to_y - VALUES_DATA (i_range_begin)) / scale_y;
               x1 = CLAMP( x1, -32000.0, 32000.0 );
               y1 = CLAMP( y1, -32000.0, 32000.0 );
             }
 
           /* Значение и расстояние до текущей точки от конца видимой осциллограммы. */
           x2 = visible_width + ((times_step * ceil (to_x / times_step)) - to_x) / scale_x;
-          y2 = (to_y - VALUES_DATA( i_range_end + 1 )) / scale_y;
+          y2 = (to_y - VALUES_DATA (i_range_end + 1)) / scale_y;
           x2 = CLAMP( x2, -32000.0, 32000.0 );
           y2 = CLAMP( y2, -32000.0, 32000.0 );
           draw = TRUE;
@@ -1193,14 +1374,14 @@ gtk_cifro_scope_draw_lined_data (GtkWidget            *widget,
           if ((x1 < 0) && (i_range_begin >= 0))
             {
               x1 = (gfloat) i - (times_step / scale_x) + 1.0;
-              y1 = (to_y - VALUES_DATA( i_range_begin )) / scale_y;
-              x1 = CLAMP( x1, -32000.0, 32000.0 );
-              y1 = CLAMP( y1, -32000.0, 32000.0 );
+              y1 = (to_y - VALUES_DATA (i_range_begin)) / scale_y;
+              x1 = CLAMP (x1, -32000.0, 32000.0);
+              y1 = CLAMP (y1, -32000.0, 32000.0);
             }
 
-          y2 = (to_y - VALUES_DATA( i_range_end )) / scale_y;
-          y2 = CLAMP( y2, -32000.0, 32000.0 );
-          if (!isnan( values_data[ i_range_begin ] ) && !isnan( values_data[ i_range_end ] ))
+          y2 = (to_y - VALUES_DATA (i_range_end)) / scale_y;
+          y2 = CLAMP (y2, -32000.0, 32000.0);
+          if (!isnan (values_data[i_range_begin]) && !isnan (values_data[i_range_end]))
             draw = TRUE;
         }
 
@@ -1209,21 +1390,21 @@ gtk_cifro_scope_draw_lined_data (GtkWidget            *widget,
       else
         {
           /* Нарисуем линию от предыдущей точки. */
-          if (!isnan( values_data[ i_range_begin ] ) && !isnan( values_data[ i_range_begin + 1 ] ))
+          if (!isnan (values_data[i_range_begin]) && !isnan (values_data[i_range_begin + 1]))
             {
-              y1 = (to_y - VALUES_DATA( i_range_begin )) / scale_y;
-              y2 = (to_y - VALUES_DATA( i_range_begin + 1 )) / scale_y;
-              y1 = CLAMP( y1, -32000.0, 32000.0 );
-              y2 = CLAMP( y2, -32000.0, 32000.0 );
+              y1 = (to_y - VALUES_DATA (i_range_begin)) / scale_y;
+              y2 = (to_y - VALUES_DATA (i_range_begin + 1)) / scale_y;
+              y1 = CLAMP (y1, -32000.0, 32000.0);
+              y2 = CLAMP (y2, -32000.0, 32000.0);
               cairo_sdline (surface, x2 - 1, y1, x2, y2, values_color);
               draw = TRUE;
             }
 
           for (j = i_range_begin + 1; j <= i_range_end; j++)
             {
-              if (isnan( values_data[j] ))
+              if (isnan (values_data[j]))
                 continue;
-              y_start = VALUES_DATA( j );
+              y_start = VALUES_DATA (j);
               y_end = y_start;
               draw = TRUE;
               break;
@@ -1231,20 +1412,20 @@ gtk_cifro_scope_draw_lined_data (GtkWidget            *widget,
 
           for (; j <= i_range_end; j++)
             {
-              if (isnan( values_data[j] ))
+              if (isnan (values_data[j]))
                 continue;
-              if (VALUES_DATA( j ) < y_start)
-                y_start = VALUES_DATA( j );
-              if (VALUES_DATA( j ) > y_end)
-                y_end = VALUES_DATA( j );
+              if ( VALUES_DATA (j) < y_start)
+                y_start = VALUES_DATA (j);
+              if ( VALUES_DATA (j) > y_end)
+                y_end = VALUES_DATA (j);
               draw = TRUE;
             }
 
           x1 = i;
           y1 = (to_y - y_start) / scale_y;
           y2 = (to_y - y_end) / scale_y;
-          y1 = CLAMP( y1, -32000.0, 32000.0 );
-          y2 = CLAMP( y2, -32000.0, 32000.0 );
+          y1 = CLAMP (y1, -32000.0, 32000.0);
+          y2 = CLAMP (y2, -32000.0, 32000.0);
         }
 
       if (draw)
@@ -1293,8 +1474,8 @@ gtk_cifro_scope_draw_dotted_data (GtkWidget            *widget,
   gfloat values_shift;
   guint32 values_color;
 
-#define VALUES_TIME(i) ( ( i * times_step ) + times_shift )
-#define VALUES_DATA(i) ( ( values_data[i] * values_scale ) + values_shift )
+#define VALUES_TIME(i) ((i * times_step) + times_shift)
+#define VALUES_DATA(i) ((values_data[i] * values_scale) + values_shift)
 
   gint i;
   gint i_range_begin, i_range_end;
@@ -1318,19 +1499,19 @@ gtk_cifro_scope_draw_dotted_data (GtkWidget            *widget,
   i_range_begin = (from_x - times_shift) / times_step;
   i_range_end = (to_x - times_shift) / times_step;
 
-  i_range_begin = CLAMP( i_range_begin, 0, values_num );
-  i_range_end = CLAMP( i_range_end, 0, values_num );
+  i_range_begin = CLAMP (i_range_begin, 0, values_num);
+  i_range_end = CLAMP (i_range_end, 0, values_num);
 
   if (i_range_begin > i_range_end)
     return;
 
   for (i = i_range_begin; i < i_range_end; i++)
     {
-      if (isnan( values_data[i] ))
+      if (isnan (values_data[i]))
         continue;
-      x = VALUES_TIME( i );
+      x = VALUES_TIME (i);
       x = (x - from_x) / scale_x;
-      y = VALUES_DATA( i );
+      y = VALUES_DATA (i);
       y = (to_y - y) / scale_y;
       if (size == 0)
         cairo_sdline_dot (surface, x, y, values_color);
@@ -1369,8 +1550,8 @@ gtk_cifro_scope_draw_crossed_data (GtkWidget            *widget,
   gfloat values_shift;
   guint32 values_color;
 
-#define VALUES_TIME(i) ( ( i * times_step ) + times_shift )
-#define VALUES_DATA(i) ( ( values_data[i] * values_scale ) + values_shift )
+#define VALUES_TIME(i) ((i * times_step) + times_shift)
+#define VALUES_DATA(i) ((values_data[i] * values_scale) + values_shift)
 
   gint i;
   gint i_range_begin, i_range_end;
@@ -1394,19 +1575,19 @@ gtk_cifro_scope_draw_crossed_data (GtkWidget            *widget,
   i_range_begin = (from_x - times_shift) / times_step;
   i_range_end = (to_x - times_shift) / times_step;
 
-  i_range_begin = CLAMP( i_range_begin, 0, values_num );
-  i_range_end = CLAMP( i_range_end, 0, values_num );
+  i_range_begin = CLAMP (i_range_begin, 0, values_num);
+  i_range_end = CLAMP (i_range_end, 0, values_num);
 
   if (i_range_begin > i_range_end)
     return;
 
   for (i = i_range_begin; i < i_range_end; i++)
     {
-      if (isnan( values_data[i] ))
+      if (isnan (values_data[i]))
         continue;
-      x = VALUES_TIME( i );
+      x = VALUES_TIME (i);
       x = (x - from_x) / scale_x;
-      y = VALUES_DATA( i );
+      y = VALUES_DATA (i);
       y = (to_y - y) / scale_y;
       cairo_sdline_h (surface, x - size, x + size, y, values_color);
       cairo_sdline_v (surface, x, y - size, y + size, values_color);
@@ -1445,10 +1626,12 @@ gtk_cifro_scope_visible_draw (GtkWidget *widget,
   GtkCifroScopeChannel *channel;
   gpointer channel_id;
 
-  gint width, height;
+  guint width, height;
+
+  if (cairo == NULL)
+    return;
 
   surface = cairo_sdline_surface_create_for (cairo_get_target (cairo));
-  g_return_if_fail (surface != NULL);
 
   /* Рисуем оси. */
   gtk_cifro_scope_draw_axis (widget, surface);
@@ -1459,24 +1642,33 @@ gtk_cifro_scope_visible_draw (GtkWidget *widget,
     {
       if (channel->show)
         {
-          if (channel->draw_type == GTK_CIFRO_SCOPE_DOTTED)
-            gtk_cifro_scope_draw_dotted_data (widget, surface, channel_id, 0);
-          else if (channel->draw_type == GTK_CIFRO_SCOPE_DOTTED2)
-            gtk_cifro_scope_draw_dotted_data (widget, surface, channel_id, 1);
-          else if (channel->draw_type == GTK_CIFRO_SCOPE_DOTTED_LINE)
+          switch (channel->draw_type)
             {
+            case GTK_CIFRO_SCOPE_DOTTED:
+              gtk_cifro_scope_draw_dotted_data (widget, surface, channel_id, 0);
+              break;
+
+            case GTK_CIFRO_SCOPE_DOTTED2:
+              gtk_cifro_scope_draw_dotted_data (widget, surface, channel_id, 1);
+              break;
+
+            case GTK_CIFRO_SCOPE_DOTTED_LINE:
               gtk_cifro_scope_draw_dotted_data (widget, surface, channel_id, 1);
               gtk_cifro_scope_draw_lined_data (widget, surface, channel_id);
-            }
-          else if (channel->draw_type == GTK_CIFRO_SCOPE_CROSSED)
-            gtk_cifro_scope_draw_crossed_data (widget, surface, channel_id, 3);
-          else if (channel->draw_type == GTK_CIFRO_SCOPE_CROSSED_LINE)
-            {
+              break;
+
+            case GTK_CIFRO_SCOPE_CROSSED:
+              gtk_cifro_scope_draw_crossed_data (widget, surface, channel_id, 3);
+              break;
+
+            case GTK_CIFRO_SCOPE_CROSSED_LINE:
               gtk_cifro_scope_draw_crossed_data (widget, surface, channel_id, 3);
               gtk_cifro_scope_draw_lined_data (widget, surface, channel_id);
+              break;
+
+            default:
+              gtk_cifro_scope_draw_lined_data (widget, surface, channel_id);
             }
-          else
-            gtk_cifro_scope_draw_lined_data (widget, surface, channel_id);
         }
     }
 
@@ -1521,8 +1713,7 @@ gtk_cifro_scope_configure (GtkWidget            *widget,
 
   /* Устанавливаем размер линеек оцифровки осей. */
   border *= 1.6;
-  border /= PANGO_SCALE;
-  gtk_cifro_area_set_border (GTK_CIFRO_AREA (widget), border, border, border, border);
+  priv->border_size = border / PANGO_SCALE;
 
   /* Основной цвет темы. */
 #ifdef CIFRO_AREA_WITH_GTK2
@@ -1548,45 +1739,39 @@ gtk_cifro_scope_configure (GtkWidget            *widget,
 }
 
 /* Функция обработки сигнала движения мышки. */
-gboolean
+static gboolean
 gtk_cifro_scope_motion_notify (GtkWidget            *widget,
                                GdkEventMotion       *event)
 {
   GtkCifroArea *carea = GTK_CIFRO_AREA (widget);
   GtkCifroScope *cscope = GTK_CIFRO_SCOPE (widget);
   GtkCifroScopePrivate *priv = cscope->priv;
+  guint border_size = priv->border_size;
 
-  gint area_width;
-  gint area_height;
-
-  gint border_left;
-  gint border_right;
-  gint border_top;
-  gint border_bottom;
+  guint area_width;
+  guint area_height;
 
   gint x = event->x;
   gint y = event->y;
 
   /* Проверяем, что координаты курсора находятся в рабочей области. */
   gtk_cifro_area_get_size (carea, &area_width, &area_height);
-  gtk_cifro_area_get_border (carea, &border_left, &border_right, &border_top, &border_bottom);
-
-  if (x < border_left)
+  if (x < border_size)
     {
       x = -1;
       y = -1;
     }
-  if (y < border_top)
+  if (y < border_size)
     {
       x = -1;
       y = -1;
     }
-  if (x > area_width - border_right)
+  if (x > area_width - border_size)
     {
       x = -1;
       y = -1;
     }
-  if (y > area_height - border_bottom)
+  if (y > area_height - border_size)
     {
       x = -1;
       y = -1;
@@ -1602,7 +1787,7 @@ gtk_cifro_scope_motion_notify (GtkWidget            *widget,
 }
 
 /* Функция обработки сигнала выхода курсора за пределы окна. */
-gboolean
+static gboolean
 gtk_cifro_scope_leave_notify (GtkWidget            *widget,
                               GdkEventCrossing     *event)
 {
@@ -1617,78 +1802,61 @@ gtk_cifro_scope_leave_notify (GtkWidget            *widget,
   return FALSE;
 }
 
-/* Функция создаёт виджет GtkCifroScope. */
+/**
+ * gtk_cifro_scope_new:
+ * @gravity: ориентация осей осциллографа
+ *
+ * Функция создаёт виджет #GtkCifroScope.
+ *
+ * Returns: #GtkCifroScope.
+ *
+ */
 GtkWidget *
-gtk_cifro_scope_new (void)
+gtk_cifro_scope_new (GtkCifroScopeGravity gravity)
 {
-  return g_object_new (GTK_TYPE_CIFRO_SCOPE, NULL);
+  return g_object_new (GTK_TYPE_CIFRO_SCOPE, "gravity", gravity, NULL);
 }
 
-/* Функция изменяет ориентацию осей осциллографа. */
+/**
+ * gtk_cifro_scope_set_limits:
+ * @cscope: указатель на #GtkCifroScope
+ * @min_x: минимально возможное значение по оси X
+ * @max_x: максимально возможное значение по оси X
+ * @min_y: минимально возможное значение по оси Y
+ * @max_y: максимально возможное значение по оси Y
+ *
+ * Функция устанавливает диапазон значений отображаемых данных.
+ *
+ */
 void
-gtk_cifro_scope_set_gravity (GtkCifroScope        *cscope,
-                             GtkCifroScopeGravity  gravity)
+gtk_cifro_scope_set_limits (GtkCifroScope *cscope,
+                            gdouble        min_x,
+                            gdouble        max_x,
+                            gdouble        min_y,
+                            gdouble        max_y)
 {
   g_return_if_fail (GTK_IS_CIFRO_SCOPE (cscope));
 
-  gtk_cifro_area_set_rotation (GTK_CIFRO_AREA (cscope), TRUE);
+  g_return_if_fail (min_x < max_x);
+  g_return_if_fail (min_y < max_y);
 
-  /* Устанавливаем направления осей. */
-  switch (gravity)
-    {
-      case GTK_CIFRO_SCOPE_GRAVITY_RIGHT_UP:
-        gtk_cifro_area_set_angle (GTK_CIFRO_AREA (cscope), 0.0);
-        gtk_cifro_area_set_swap (GTK_CIFRO_AREA (cscope), FALSE, FALSE);
-        break;
-
-      case GTK_CIFRO_SCOPE_GRAVITY_LEFT_UP:
-        gtk_cifro_area_set_angle (GTK_CIFRO_AREA (cscope), 0.0);
-        gtk_cifro_area_set_swap (GTK_CIFRO_AREA (cscope), TRUE, FALSE);
-        break;
-
-      case GTK_CIFRO_SCOPE_GRAVITY_RIGHT_DOWN:
-        gtk_cifro_area_set_angle (GTK_CIFRO_AREA (cscope), 0.0);
-        gtk_cifro_area_set_swap (GTK_CIFRO_AREA (cscope), FALSE, TRUE);
-        break;
-
-      case GTK_CIFRO_SCOPE_GRAVITY_LEFT_DOWN:
-        gtk_cifro_area_set_angle (GTK_CIFRO_AREA (cscope), 0.0);
-        gtk_cifro_area_set_swap (GTK_CIFRO_AREA (cscope), TRUE, TRUE);
-        break;
-
-      case GTK_CIFRO_SCOPE_GRAVITY_UP_RIGHT:
-        gtk_cifro_area_set_angle (GTK_CIFRO_AREA (cscope), G_PI / 2.0);
-        gtk_cifro_area_set_swap (GTK_CIFRO_AREA (cscope), TRUE, FALSE);
-        break;
-
-      case GTK_CIFRO_SCOPE_GRAVITY_UP_LEFT:
-        gtk_cifro_area_set_angle (GTK_CIFRO_AREA (cscope), G_PI / 2.0);
-        gtk_cifro_area_set_swap (GTK_CIFRO_AREA (cscope), TRUE, TRUE);
-        break;
-
-      case GTK_CIFRO_SCOPE_GRAVITY_DOWN_RIGHT:
-        gtk_cifro_area_set_angle (GTK_CIFRO_AREA (cscope), G_PI / 2.0);
-        gtk_cifro_area_set_swap (GTK_CIFRO_AREA (cscope), FALSE, FALSE);
-        break;
-
-      case GTK_CIFRO_SCOPE_GRAVITY_DOWN_LEFT:
-        gtk_cifro_area_set_angle (GTK_CIFRO_AREA (cscope), G_PI / 2.0);
-        gtk_cifro_area_set_swap (GTK_CIFRO_AREA (cscope), FALSE, TRUE);
-        break;
-
-      default:
-        gtk_cifro_area_set_rotation (GTK_CIFRO_AREA (cscope), FALSE);
-        return;
-    }
-
-  gtk_cifro_area_set_rotation (GTK_CIFRO_AREA (cscope), FALSE);
-
-  cscope->priv->gravity = gravity;
+  cscope->priv->min_x = min_x;
+  cscope->priv->max_x = max_x;
+  cscope->priv->min_y = min_y;
+  cscope->priv->max_y = max_y;
 
   gtk_widget_queue_draw (GTK_WIDGET (cscope));
 }
 
-/* Функция включает или выключает отображения блока с информацией о значениях под курсором. */
+/**
+ * gtk_cifro_scope_set_info_show:
+ * @cscope: указатель на #GtkCifroScope
+ * @show: признак отображения информационного блока
+ *
+ * Функция включает (@show = %TRUE) или выключает (@show = %FALSE) отображение
+ * блока с информацией о значениях под курсором.
+ *
+ */
 void
 gtk_cifro_scope_set_info_show (GtkCifroScope *cscope,
                                gboolean       show)
@@ -1700,7 +1868,15 @@ gtk_cifro_scope_set_info_show (GtkCifroScope *cscope,
   gtk_widget_queue_draw (GTK_WIDGET (cscope));
 }
 
-/* Функция задаёт подписи к осям абсцисс и ординат. */
+/**
+ * gtk_cifro_scope_set_axis_name:
+ * @cscope: указатель на #GtkCifroScope
+ * @time_axis_name: название оси времени (абсцисса)
+ * @value_axis_name: название оси данных (ордината)
+ *
+ * Функция задаёт названия к осям абсцисс и ординат.
+ *
+ */
 void
 gtk_cifro_scope_set_axis_name (GtkCifroScope *cscope,
                                const gchar   *time_axis_name,
@@ -1721,15 +1897,23 @@ gtk_cifro_scope_set_axis_name (GtkCifroScope *cscope,
   gtk_widget_queue_draw (GTK_WIDGET (cscope));
 }
 
-/* Функция дабавляет канал отображения данных в осциллограф. */
-gpointer
+/**
+ * gtk_cifro_scope_add_channel:
+ * @cscope: указатель на #GtkCifroScope
+ *
+ * Функция дабавляет канал отображения данных в осциллограф.
+ *
+ * Returns: Идентификатор нового канала.
+ *
+ */
+guint
 gtk_cifro_scope_add_channel (GtkCifroScope *cscope)
 {
   GtkCifroScopePrivate *priv;
   GtkCifroScopeChannel* channel;
-  gpointer channel_id;
+  guint channel_id = 0;
 
-  g_return_val_if_fail (GTK_IS_CIFRO_SCOPE (cscope), NULL);
+  g_return_val_if_fail (GTK_IS_CIFRO_SCOPE (cscope), 0);
 
   priv = cscope->priv;
 
@@ -1744,44 +1928,57 @@ gtk_cifro_scope_add_channel (GtkCifroScope *cscope)
                                        1.0);
 
   /* Генерируем новый идентификатор канала. */
-  do
-    {
-      channel_id = GINT_TO_POINTER( priv->next_channel_id++ );
-    }
-  while (channel_id == NULL || g_hash_table_lookup (priv->channels, channel_id));
+  while ((channel_id == 0) || g_hash_table_contains (priv->channels, GUINT_TO_POINTER (channel_id)))
+    channel_id = g_random_int ();
 
-  g_hash_table_insert (priv->channels, channel_id, channel);
+  g_hash_table_insert (priv->channels, GUINT_TO_POINTER (channel_id), channel);
 
   return channel_id;
 }
 
-/* Функция удаляет канал отображения данных из осциллографа. */
+/**
+ * gtk_cifro_scope_remove_channel:
+ * @cscope: указатель на #GtkCifroScope
+ * @channel_id: идентификатор канала данных
+ *
+ * Функция удаляет канал отображения данных из осциллографа.
+ *
+ */
 void
 gtk_cifro_scope_remove_channel (GtkCifroScope *cscope,
-                                gpointer       channel_id)
+                                guint          channel_id)
 {
   g_return_if_fail (GTK_IS_CIFRO_SCOPE (cscope));
 
-  g_hash_table_remove (cscope->priv->channels, channel_id);
+  g_hash_table_remove (cscope->priv->channels, GUINT_TO_POINTER (channel_id));
 
   gtk_widget_queue_draw (GTK_WIDGET (cscope));
 }
 
-/* Функция устанавливает имя канала. */
+/**
+ * gtk_cifro_scope_set_channel_name:
+ * @cscope: указатель на #GtkCifroScope
+ * @channel_id: идентификатор канала данных
+ * @axis_name: название канала
+ *
+ * Функция устанавливает название канала. Если идентификатор канала равен 0 название
+ * устанавливается для всех каналов.
+ *
+ */
 void
 gtk_cifro_scope_set_channel_name (GtkCifroScope *cscope,
-                                  gpointer       channel_id,
+                                  guint          channel_id,
                                   const gchar   *axis_name)
 {
   GHashTableIter channels_iter;
   GtkCifroScopeChannel *channel;
-  gpointer cur_channel_id;
+  guint cur_channel_id;
 
   g_return_if_fail (GTK_IS_CIFRO_SCOPE (cscope));
 
   g_hash_table_iter_init (&channels_iter, cscope->priv->channels);
-  while (g_hash_table_iter_next (&channels_iter, &cur_channel_id, (gpointer) &channel))
-    if (channel_id == NULL || cur_channel_id == channel_id)
+  while (g_hash_table_iter_next (&channels_iter, (gpointer) &cur_channel_id, (gpointer) &channel))
+    if ((channel_id == 0) || (cur_channel_id == channel_id))
       {
         g_free (channel->name);
         channel->name = g_strdup (axis_name);
@@ -1790,22 +1987,34 @@ gtk_cifro_scope_set_channel_name (GtkCifroScope *cscope,
   gtk_widget_queue_draw (GTK_WIDGET (cscope));
 }
 
-/* Функция устанавливает с какого момента времени следует отображать данные и шаг между двумя соседними данными. */
+/**
+ * gtk_cifro_scope_set_channel_time_param:
+ * @cscope: указатель на #GtkCifroScope
+ * @channel_id: идентификатор канала данных
+ * @time_shift: начальный момент времени
+ * @time_step: шаг смещения по оси времени
+ *
+ * Функция устанавливает с какого момента времени следует отображать данные и
+ * какой шаг между двумя соседними данными (частота оцифровки). Параметры задаются
+ * индивидуально для каждого канала. Если идентификатор канала равен 0 параметры
+ * устанавливаются для всех каналов.
+ *
+ */
 void
 gtk_cifro_scope_set_channel_time_param (GtkCifroScope *cscope,
-                                        gpointer       channel_id,
+                                        guint          channel_id,
                                         gfloat         time_shift,
                                         gfloat         time_step)
 {
   GHashTableIter channels_iter;
   GtkCifroScopeChannel *channel;
-  gpointer cur_channel_id;
+  guint cur_channel_id;
 
   g_return_if_fail (GTK_IS_CIFRO_SCOPE (cscope));
 
   g_hash_table_iter_init (&channels_iter, cscope->priv->channels);
-  while (g_hash_table_iter_next (&channels_iter, &cur_channel_id, (gpointer) &channel))
-    if (channel_id == NULL || cur_channel_id == channel_id)
+  while (g_hash_table_iter_next (&channels_iter, (gpointer) &cur_channel_id, (gpointer) &channel))
+    if ((channel_id == 0) || (cur_channel_id == channel_id))
       {
         channel->time_shift = time_shift;
         channel->time_step = time_step;
@@ -1814,22 +2023,34 @@ gtk_cifro_scope_set_channel_time_param (GtkCifroScope *cscope,
   gtk_widget_queue_draw (GTK_WIDGET (cscope));
 }
 
-/* Функция устанавливает коэффициенты на которые умножаются и сдвигаются все данные в канале. */
+/**
+ * gtk_cifro_scope_set_channel_value_param:
+ * @cscope: указатель на #GtkCifroScope
+ * @channel_id: идентификатор канала данных
+ * @value_shift: коэффициент смещения данных
+ * @value_scale: коэффициент умножения данных
+ *
+ * Функция устанавливает коэффициенты на которые умножаются и сдвигаются все данные в
+ * канале. Это позволяет отображать разнородные данные в одном пространстве и наглядно
+ * сравнивать их друг с другом. Коэффициенты задаются индивидуально для каждого канала.
+ * Если идентификатор канала равен 0 коэффициенты устанавливаются для всех каналов.
+ *
+ */
 void
 gtk_cifro_scope_set_channel_value_param (GtkCifroScope *cscope,
-                                         gpointer       channel_id,
+                                         guint          channel_id,
                                          gfloat         value_shift,
                                          gfloat         value_scale)
 {
   GHashTableIter channels_iter;
   GtkCifroScopeChannel *channel;
-  gpointer cur_channel_id;
+  guint cur_channel_id;
 
   g_return_if_fail (GTK_IS_CIFRO_SCOPE (cscope));
 
   g_hash_table_iter_init (&channels_iter, cscope->priv->channels);
-  while (g_hash_table_iter_next (&channels_iter, &cur_channel_id, (gpointer) &channel))
-    if (channel_id == NULL || cur_channel_id == channel_id)
+  while (g_hash_table_iter_next (&channels_iter, (gpointer) &cur_channel_id, (gpointer) &channel))
+    if ((channel_id == 0) || (cur_channel_id == channel_id))
       {
         channel->value_shift = value_shift;
         channel->value_scale = value_scale;
@@ -1838,92 +2059,130 @@ gtk_cifro_scope_set_channel_value_param (GtkCifroScope *cscope,
   gtk_widget_queue_draw (GTK_WIDGET (cscope));
 }
 
-/* Функция устанавливает типа отображения осциллограмм. */
+/**
+ * gtk_cifro_scope_set_channel_draw_type:
+ * @cscope: указатель на #GtkCifroScope
+ * @channel_id: идентификатор канала данных
+ * @draw_type: тип отображения осциллограмм
+ *
+ * Функция устанавливает типа отображения осциллограмм. Если идентификатор канала равен 0
+ * тип отображения устанавливается для всех каналов.
+ *
+ */
 void
 gtk_cifro_scope_set_channel_draw_type (GtkCifroScope         *cscope,
-                                       gpointer               channel_id,
+                                       guint                  channel_id,
                                        GtkCifroScopeDrawType  draw_type)
 {
   GHashTableIter channels_iter;
   GtkCifroScopeChannel *channel;
-  gpointer cur_channel_id;
+  guint cur_channel_id;
 
   g_return_if_fail (GTK_IS_CIFRO_SCOPE (cscope));
 
   g_hash_table_iter_init (&channels_iter, cscope->priv->channels);
-  while (g_hash_table_iter_next (&channels_iter, &cur_channel_id, (gpointer) &channel))
-    if (channel_id == NULL || cur_channel_id == channel_id)
+  while (g_hash_table_iter_next (&channels_iter, (gpointer) &cur_channel_id, (gpointer) &channel))
+    if ((channel_id == 0) || (cur_channel_id == channel_id))
       channel->draw_type = draw_type;
 
   gtk_widget_queue_draw (GTK_WIDGET (cscope));
 }
 
-/* Функция устанавливает цвет отображения данных канала. */
+/**
+ * gtk_cifro_scope_set_channel_color:
+ * @cscope: указатель на #GtkCifroScope
+ * @channel_id: идентификатор канала данных
+ * @red: значение красной составляющей цвета от 0 до 1
+ * @green: значение зелёной составляющей цвета от 0 до 1
+ * @blue: значение синей составляющей цвета от 0 до 1
+ *
+ * Функция устанавливает цвет отображения данных канала. Если идентификатор канала равен 0
+ * цвет устанавливается для всех каналов.
+ *
+ */
 void
 gtk_cifro_scope_set_channel_color (GtkCifroScope *cscope,
-                                   gpointer       channel_id,
+                                   guint          channel_id,
                                    gdouble        red,
                                    gdouble        green,
                                    gdouble        blue)
 {
   GHashTableIter channels_iter;
   GtkCifroScopeChannel *channel;
-  gpointer cur_channel_id;
+  guint cur_channel_id;
 
   g_return_if_fail (GTK_IS_CIFRO_SCOPE (cscope));
 
   g_hash_table_iter_init (&channels_iter, cscope->priv->channels);
-  while (g_hash_table_iter_next (&channels_iter, &cur_channel_id, (gpointer) &channel))
-    if (channel_id == NULL || cur_channel_id == channel_id)
+  while (g_hash_table_iter_next (&channels_iter, (gpointer) &cur_channel_id, (gpointer) &channel))
+    if ((channel_id == 0) || (cur_channel_id == channel_id))
       channel->color = cairo_sdline_color (red, green, blue, 1.0);
 
   gtk_widget_queue_draw (GTK_WIDGET (cscope));
 }
 
-/* Функция устанавливает данные канала для отображения. */
+/**
+ * gtk_cifro_scope_set_channel_data:
+ * @cscope: указатель на #GtkCifroScope
+ * @channel_id: идентификатор канала данных
+ * @n_values: число значений для отображения
+ * @values: указатель на массив данных для отображения
+ *
+ * Функция устанавливает данные канала для отображения.
+ *
+ */
 void
 gtk_cifro_scope_set_channel_data (GtkCifroScope *cscope,
-                                  gpointer       channel_id,
-                                  gint           num,
+                                  guint          channel_id,
+                                  guint          n_values,
                                   gfloat        *values)
 {
   GtkCifroScopeChannel* channel;
 
   g_return_if_fail (GTK_IS_CIFRO_SCOPE (cscope));
 
-  channel = g_hash_table_lookup (cscope->priv->channels, channel_id);
-  if (!channel)
+  channel = g_hash_table_lookup (cscope->priv->channels, GUINT_TO_POINTER (channel_id));
+  if (channel == NULL)
     return;
 
-  if (num > channel->size)
+  if (n_values > channel->size)
     {
-      channel->data = g_renew( float, channel->data, num );
-      channel->size = num;
+      channel->data = g_renew (float, channel->data, n_values);
+      channel->size = n_values;
     }
 
-  channel->num = num;
-  if (num > 0)
+  channel->num = n_values;
+  if (n_values > 0)
     {
-      memcpy (channel->data, values, num * sizeof(gfloat));
+      memcpy (channel->data, values, n_values * sizeof(gfloat));
       channel->show = TRUE;
     }
 }
 
-/* Функция включает или выключает отображения данных канала. */
+/**
+ * gtk_cifro_scope_set_channel_show:
+ * @cscope: указатель на #GtkCifroScope
+ * @channel_id: идентификатор канала данных
+ * @show: признак отображения канала данных
+ *
+ * Функция включает (@show = %TRUE) или выключает (@show = %FALSE) отображения данных канала.
+ * Если идентификатор канала равен 0 отображение устанавливается для всех каналов.
+ *
+ */
 void
 gtk_cifro_scope_set_channel_show (GtkCifroScope *cscope,
-                                  gpointer       channel_id,
+                                  guint          channel_id,
                                   gboolean       show)
 {
   GHashTableIter channels_iter;
   GtkCifroScopeChannel *channel;
-  gpointer cur_channel_id;
+  guint cur_channel_id;
 
   g_return_if_fail (GTK_IS_CIFRO_SCOPE (cscope));
 
   g_hash_table_iter_init (&channels_iter, cscope->priv->channels);
-  while (g_hash_table_iter_next (&channels_iter, &cur_channel_id, (gpointer) &channel))
-    if (channel_id == NULL || cur_channel_id == channel_id)
+  while (g_hash_table_iter_next (&channels_iter, (gpointer) &cur_channel_id, (gpointer) &channel))
+    if ((channel_id == 0) || (cur_channel_id == channel_id))
       channel->show = show;
 
   gtk_widget_queue_draw (GTK_WIDGET (cscope));

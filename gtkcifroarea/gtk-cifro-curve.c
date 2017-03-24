@@ -1,7 +1,7 @@
 /*
  * GtkCifroArea - 2D layers image management library.
  *
- * Copyright 2013-2016 Andrei Fadeev (andrei@webcontrol.ru)
+ * Copyright 2013-2017 Andrei Fadeev (andrei@webcontrol.ru)
  *
  * This file is part of GtkCifroArea.
  *
@@ -23,14 +23,28 @@
  *
  */
 
-/*
- * \file gtk-cifro-curve.c
+/**
+ * SECTION: gtk-cifro-curve
+ * @Short_description: GTK+ виджет осциллографа с параметрической кривой
+ * @Title: GtkCifroCurve
+ * @See_also: #GtkCifroScope, #GtkCifroArea, #GtkCifroAreaControl
  *
- * \brief Исходный файл GTK+ виджета осциллографа совмещённого с параметрической кривой
- * \author Andrei Fadeev
- * \date 2013-2016
- * \license GNU General Public License version 3 или более поздняя<br>
- * Коммерческая лицензия - свяжитесь с автором
+ * GtkCifroCurve позволяет отображать данные аналогично #GtkCifroScope и, кроме этого,
+ * обеспечивает отображение кривой с определением её параметров через контрольные точки.
+ * Функция расчёта кривой указывается пользователем при создании виджета.
+ *
+ * Параметры кривой определяются местоположением контрольных точек. Точки можно перемещать
+ * при помощи мышки при нажатой левой кнопке. Точка, выбранная для перемещения, выделяется
+ * окружностью. Точки можно добавлять или удалять. Для добавления точек необходимо нажать
+ * левую кнопку манипулятора при нажатой клавише Ctrl на клавиатуре. Аналогично при нажатой
+ * клавише Ctrl можно удалить уже существующую точку. Также можно удалить точку совместив её
+ * с одной из соседних.
+ *
+ * Точка описывается структурой типа #GtkCifroCurvePoint. Массив точек передаётся через #GArray
+ * в виде массива структур #GtkCifroCurvePoint.
+ *
+ * Аналитический вид кривой расчитывается функцией типа #GtkCifroCurveFunc, в неё передаются
+ * все точки существующие на данный момент и указатель на пользовательские данные.
  *
  */
 
@@ -64,7 +78,7 @@ static void            gtk_cifro_curve_set_property            (GObject         
                                                                 guint                  prop_id,
                                                                 const GValue          *value,
                                                                 GParamSpec            *pspec);
-static void            gtk_cifro_curve_object_constructed      (GObject               *object);
+
 static void            gtk_cifro_curve_object_finalize         (GObject               *object);
 
 static void            gtk_cifro_curve_select_point            (GtkCifroCurve         *ccurve,
@@ -88,7 +102,27 @@ G_DEFINE_TYPE_WITH_PRIVATE (GtkCifroCurve, gtk_cifro_curve, GTK_TYPE_CIFRO_SCOPE
 static void
 gtk_cifro_curve_init (GtkCifroCurve *ccurve)
 {
-  ccurve->priv = gtk_cifro_curve_get_instance_private (ccurve);
+  GtkCifroCurvePrivate *priv = gtk_cifro_curve_get_instance_private (ccurve);
+  ccurve->priv = priv;
+
+  /* Контрольные точки кривой. */
+  priv->curve_points = g_array_new (FALSE, FALSE, sizeof (GtkCifroCurvePoint));
+
+  /* Цвета по умолчанию. */
+  priv->curve_color = cairo_sdline_color (g_random_double_range (0.5, 1.0),
+                                          g_random_double_range (0.5, 1.0),
+                                          g_random_double_range (0.5, 1.0),
+                                          1.0);
+  priv->point_color = cairo_sdline_color (g_random_double_range (0.5, 1.0),
+                                          g_random_double_range (0.5, 1.0),
+                                          g_random_double_range (0.5, 1.0),
+                                          1.0);
+
+  /* Обработчики сигналов. */
+  g_signal_connect (ccurve, "visible-draw", G_CALLBACK (gtk_cifro_curve_visible_draw), NULL);
+  g_signal_connect (ccurve, "button-press-event", G_CALLBACK (gtk_cifro_curve_button_press_event), NULL);
+  g_signal_connect (ccurve, "button-release-event", G_CALLBACK (gtk_cifro_curve_button_release_event), NULL);
+  g_signal_connect (ccurve, "motion-notify-event", G_CALLBACK (gtk_cifro_curve_motion_notify_event), NULL);
 }
 
 static void
@@ -97,8 +131,6 @@ gtk_cifro_curve_class_init (GtkCifroCurveClass *klass)
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
   object_class->set_property = gtk_cifro_curve_set_property;
-
-  object_class->constructed = gtk_cifro_curve_object_constructed;
   object_class->finalize = gtk_cifro_curve_object_finalize;
 
   g_object_class_install_property (object_class, PROP_CURVE_FUNC,
@@ -136,37 +168,6 @@ gtk_cifro_curve_set_property (GObject      *object,
 }
 
 static void
-gtk_cifro_curve_object_constructed (GObject *object)
-{
-  GtkCifroCurve *ccurve = GTK_CIFRO_CURVE (object);
-  GtkCifroCurvePrivate *priv = ccurve->priv;
-
-  G_OBJECT_CLASS (gtk_cifro_curve_parent_class)->constructed (object);
-
-  /* Контрольные точки кривой. */
-  priv->curve_points = g_array_new (FALSE, FALSE, sizeof (GtkCifroCurvePoint));
-
-  /* Цвета по умолчанию. */
-  priv->curve_color = cairo_sdline_color (g_random_double_range (0.5, 1.0),
-                                          g_random_double_range (0.5, 1.0),
-                                          g_random_double_range (0.5, 1.0),
-                                          1.0);
-  priv->point_color = cairo_sdline_color (g_random_double_range (0.5, 1.0),
-                                          g_random_double_range (0.5, 1.0),
-                                          g_random_double_range (0.5, 1.0),
-                                          1.0);
-
-  /* Обработчики сигналов. */
-  g_signal_connect (ccurve, "visible-draw", G_CALLBACK (gtk_cifro_curve_visible_draw), NULL);
-  g_signal_connect (ccurve, "button-press-event", G_CALLBACK (gtk_cifro_curve_button_press_event), NULL);
-  g_signal_connect (ccurve, "button-release-event", G_CALLBACK (gtk_cifro_curve_button_release_event), NULL);
-  g_signal_connect (ccurve, "motion-notify-event", G_CALLBACK (gtk_cifro_curve_motion_notify_event), NULL);
-
-  /* По умолчанию отключаем отображение информационного блока. */
-  gtk_cifro_scope_set_info_show (GTK_CIFRO_SCOPE (ccurve), FALSE);
-}
-
-static void
 gtk_cifro_curve_object_finalize (GObject *object)
 {
   GtkCifroCurve *ccurve = GTK_CIFRO_CURVE (object);
@@ -187,9 +188,9 @@ gtk_cifro_curve_select_point (GtkCifroCurve *ccurve,
 
   gint selected_point;
 
-  gint area_width;
-  gint area_height;
-  gint border_top;
+  guint area_width;
+  guint area_height;
+  guint border_top;
 
   gdouble x, y;
   gdouble point_distance;
@@ -246,9 +247,9 @@ gtk_cifro_curve_visible_draw (GtkWidget *widget,
 
   cairo_sdline_surface *surface;
 
-  gint visible_width;
-  gint visible_height;
-  gint border_top;
+  guint visible_width;
+  guint visible_height;
+  guint border_top;
 
   gdouble x_value;
   gdouble y_value;
@@ -337,6 +338,8 @@ gtk_cifro_curve_button_press_event (GtkWidget      *widget,
       /* Выбрана точка для перемещения. */
       else
         priv->move_point = TRUE;
+
+      return TRUE;
     }
   else
     {
@@ -346,6 +349,8 @@ gtk_cifro_curve_button_press_event (GtkWidget      *widget,
           gdouble value_x, value_y;
           gtk_cifro_area_point_to_value (carea, event->x, event->y, &value_x, &value_y);
           gtk_cifro_curve_add_point (ccurve, value_x, value_y);
+
+          return TRUE;
         }
     }
 
@@ -385,18 +390,16 @@ gtk_cifro_curve_motion_notify_event (GtkWidget      *widget,
   GtkCifroCurvePoint *point;
   GtkCifroCurvePoint *near_point;
 
-  gint border_top;
+  guint border_top;
 
+  gdouble min_x, max_x;
+  gdouble min_y, max_y;
   gdouble from_x, to_x;
   gdouble from_y, to_y;
-
   gdouble value_x, value_y;
-  gdouble min_x, max_x;
   gdouble point_radius;
 
   gtk_cifro_area_get_border (carea, NULL, NULL, &border_top, NULL);
-
-  point_radius = 0.4 * border_top;
 
   /* Выделяем точку для перемещения. */
   gtk_cifro_curve_select_point (ccurve, event->x, event->y);
@@ -409,23 +412,26 @@ gtk_cifro_curve_motion_notify_event (GtkWidget      *widget,
 
   /* Вышли за границу окна. */
   if (priv->selected_point < 0)
-    return TRUE;
+    return FALSE;
 
   /* Текущая граница отображения. */
   gtk_cifro_area_get_view (carea, &from_x, &to_x, &from_y, &to_y);
+  gtk_cifro_area_get_limits (carea, &min_x, &max_x, &min_y, &max_y);
 
   /* Расчитываем новое местоположение точки. */
   gtk_cifro_area_point_to_value (carea, event->x, event->y, &value_x, &value_y);
 
   point = &g_array_index( priv->curve_points, GtkCifroCurvePoint, priv->selected_point );
+  point_radius = 0.4 * border_top;
 
   /* Определяем границы перемещения точки и расстояние до соседних точек.
-     Если расстояние до одной из соседних точек меньше чем "радиус" точки - помечаем точку на удаление.
-     Само удаление будет произведено при отпускании кнопки манипулятора. */
+   * Если расстояние до одной из соседних точек меньше чем "радиус" точки,
+   * помечаем точку на удаление. Само удаление будет произведено при отпускании
+   * кнопки манипулятора. */
   if (priv->selected_point > 0)
     {
       near_point = &g_array_index (priv->curve_points, GtkCifroCurvePoint, priv->selected_point - 1);
-      min_x = MAX( from_x, near_point->x );
+      min_x = MAX (from_x, near_point->x);
       if (near_point->x > from_x)
         {
           gdouble x1, y1, x2, y2;
@@ -435,13 +441,11 @@ gtk_cifro_curve_motion_notify_event (GtkWidget      *widget,
             priv->remove_point = TRUE;
         }
     }
-  else
-    min_x = from_x;
 
   if (priv->selected_point < priv->curve_points->len - 1)
     {
       near_point = &g_array_index (priv->curve_points, GtkCifroCurvePoint, priv->selected_point + 1);
-      max_x = MIN( to_x, near_point->x );
+      max_x = MIN (to_x, near_point->x);
       if (near_point->x < to_x)
         {
           gdouble x1, y1, x2, y2;
@@ -451,26 +455,33 @@ gtk_cifro_curve_motion_notify_event (GtkWidget      *widget,
             priv->remove_point = TRUE;
         }
     }
-  else
-    max_x = to_x;
 
   if (value_x < min_x)
     value_x = min_x;
   if (value_x > max_x)
     value_x = max_x;
-  if (value_y < from_y)
-    value_y = from_y;
-  if (value_y > to_y)
-    value_y = to_y;
+  if (value_y < min_y)
+    value_y = min_y;
+  if (value_y > max_y)
+    value_y = max_y;
 
   /* Задаём новое положение точки. */
   point->x = value_x;
   point->y = value_y;
 
-  return TRUE;
+  return FALSE;
 }
 
-/* Функция создаёт виджет GtkCifroCurve. */
+/**
+ * gtk_cifro_curve_new:
+ * @curve_func: функция расчёта кривой по заданным точкам
+ * @curve_data: пользовательские данные для передачи в curve_func
+ *
+ * Функция создаёт виджет #GtkCifroCurve.
+ *
+ * Returns: #GtkCifroCurve.
+ *
+ */
 GtkWidget *
 gtk_cifro_curve_new (GtkCifroCurveFunc curve_func,
                      gpointer          curve_data)
@@ -478,7 +489,13 @@ gtk_cifro_curve_new (GtkCifroCurveFunc curve_func,
   return g_object_new (GTK_TYPE_CIFRO_CURVE, "curve-func", curve_func, "curve-data", curve_data, NULL);
 }
 
-/* Функция удаляет все контрольные точки. */
+/**
+ * gtk_cifro_curve_clear_points:
+ * @ccurve: указатель на #GtkCifroCurve
+ *
+ * Функция удаляет все установленные точки.
+ *
+ */
 void
 gtk_cifro_curve_clear_points (GtkCifroCurve *ccurve)
 {
@@ -489,7 +506,15 @@ gtk_cifro_curve_clear_points (GtkCifroCurve *ccurve)
   gtk_widget_queue_draw (GTK_WIDGET (ccurve));
 }
 
-/* Функция добавляет одну контрольную точку к существующим. */
+/**
+ * gtk_cifro_curve_add_point:
+ * @ccurve: указатель на #GtkCifroCurve
+ * @x: X координата точки, логические координаты
+ * @y: Y координата точки, логические координаты
+ *
+ * Функция добавляет точку к существующим.
+ *
+ */
 void
 gtk_cifro_curve_add_point (GtkCifroCurve *ccurve,
                            gdouble        x,
@@ -517,11 +542,17 @@ gtk_cifro_curve_add_point (GtkCifroCurve *ccurve,
   new_point.y = y;
   g_array_insert_val( priv->curve_points, i, new_point);
 
-
   gtk_widget_queue_draw (GTK_WIDGET (ccurve));
 }
 
-/* Функция устанавливает новые контрольные точки взамен текущих. */
+/**
+ * gtk_cifro_curve_set_points:
+ * @ccurve: указатель на #GtkCifroCurve
+ * @points: массив точек (#GtkCifroCurvePoint) параметров функции
+ *
+ * Функция удаляет текущие точки и устанавливает взамен них новые.
+ *
+ */
 void
 gtk_cifro_curve_set_points (GtkCifroCurve *ccurve,
                             GArray        *points)
@@ -545,7 +576,15 @@ gtk_cifro_curve_set_points (GtkCifroCurve *ccurve,
   gtk_widget_queue_draw (GTK_WIDGET (ccurve));
 }
 
-/* Функция возвращает массив текущих контрольных точек. */
+/**
+ * gtk_cifro_curve_get_points:
+ * @ccurve: указатель на #GtkCifroCurve
+ *
+ * Функция возвращает массив текущих точек (#GtkCifroCurvePoint).
+ *
+ * Returns: Массив точек (#GtkCifroCurvePoint) параметров функции.
+ *
+ */
 GArray *
 gtk_cifro_curve_get_points (GtkCifroCurve *ccurve)
 {
@@ -561,7 +600,16 @@ gtk_cifro_curve_get_points (GtkCifroCurve *ccurve)
   return points;
 }
 
-/* Функция устанавливает цвет кривой. */
+/**
+ * gtk_cifro_curve_set_curve_color:
+ * @ccurve: указатель на #GtkCifroCurve
+ * @red: значение красной составляющей цвета от 0 до 1
+ * @green: значение зелёной составляющей цвета от 0 до 1
+ * @blue: значение синей составляющей цвета от 0 до 1
+ *
+ * Функция устанавливает цвет кривой.
+ *
+ */
 void
 gtk_cifro_curve_set_curve_color (GtkCifroCurve *ccurve,
                                  gdouble        red,
@@ -575,7 +623,16 @@ gtk_cifro_curve_set_curve_color (GtkCifroCurve *ccurve,
   gtk_widget_queue_draw (GTK_WIDGET (ccurve));
 }
 
-/* Функция устанавливает цвет контрольных точек кривой. */
+/**
+ * gtk_cifro_curve_set_point_color:
+ * @ccurve: указатель на #GtkCifroCurve
+ * @red: значение красной составляющей цвета от 0 до 1
+ * @green: значение зелёной составляющей цвета от 0 до 1
+ * @blue: значение синей составляющей цвета от 0 до 1
+ *
+ * Функция устанавливает цвет контрольных точек кривой.
+ *
+ */
 void
 gtk_cifro_curve_set_point_color (GtkCifroCurve *ccurve,
                                  gdouble        red,

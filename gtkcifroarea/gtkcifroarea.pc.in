@@ -1,11 +1,11 @@
 prefix=@CMAKE_INSTALL_PREFIX@
 libdir=${prefix}/lib
-includedir=${prefix}/include/gtkcifroarea
+includedir=${prefix}/include/gtkcifroarea-@GTK_CIFRO_AREA_VERSION@
 
 Name: GtkCifroArea
 Version: @GTK_CIFRO_AREA_VERSION@
 Description: 2D layers image management library.
 Requires: gtk+-@GTK_VERSION@
 
-Libs: -L${libdir} -lgtkcifroarea-@GTK_VERSION@
+Libs: -L${libdir} -lgtkcifroarea-@GTK_CIFRO_AREA_VERSION@
 Cflags: -I${includedir}

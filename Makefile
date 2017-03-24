@@ -27,9 +27,6 @@ install: release
 	@echo "Performing installation"
 	@$(MAKE) -C build install
 
-doc:
-	@cd doc && doxygen
-
 clean:
 	@echo "Cleaning build directory"
 	-@$(MAKE) -C build clean
@@ -38,6 +35,3 @@ distclean: clean
 	@echo "Removing build directory"
 	-@${REMOVE_DIR} bin
 	-@${REMOVE_DIR} build
-	-@${REMOVE_DIR} doc/documentation
-
-.PHONY: doc

@@ -1,7 +1,7 @@
 /*
  * GtkCifroArea - 2D layers image management library.
  *
- * Copyright 2013-2016 Andrei Fadeev (andrei@webcontrol.ru)
+ * Copyright 2013-2017 Andrei Fadeev (andrei@webcontrol.ru)
  *
  * This file is part of GtkCifroArea.
  *
@@ -23,14 +23,46 @@
  *
 */
 
-/*
- * \file gtk-cifro-area.c
+/**
+ * SECTION: gtk-cifro-area
+ * @Short_description: GTK+ виджет показа многослойных изображений
+ * @Title: GtkCifroArea
  *
- * \brief Исходный файл GTK+ виджета показа изображений сформированных интерфейсом IcaRenderer
- * \author Andrei Fadeev
- * \date 2013-2016
- * \license GNU General Public License version 3 или более поздняя<br>
- * Коммерческая лицензия - свяжитесь с автором
+ * Виджет предназначен для показа многослойных изображений сформированных внешними
+ * модулями. Виджет управляет логической системой координат учитывая такие параметры
+ * как: масштаб, диапазон допустимых значений координат, угол поворота и зеркальное
+ * отражение по осям. Для отображения данных пользователь должен отрисовать их
+ * в буфер #cairo_t с учётом текущих значений координат и масштаба. Поворот изображения
+ * и его зеркальное отражениевыполняется виджетом самостоятельно.
+ *
+ * Графическая структура виджета приведена ниже.
+ *
+ * |[
+ *
+ * +-------------------------+
+ * | О      Окантовка      О |
+ * | к +-----------------+ к |
+ * | а |                 | а |
+ * | н |                 | н |
+ * | т | Видимая область | т |
+ * | о |                 | о |
+ * | в |                 | в |
+ * | к +-----------------+ к |
+ * | а      Окантовка      а |
+ * +-------------------------+
+ *
+ * ]|
+ *
+ * Видимая область находится в центре изображения. Вокруг неё может иметься окантовка.
+ * Видимая область может масштабироваться, поворачиваться вокруг центра изображения, зеркально
+ * отражаться по обоим осям. Для видимой области отслеживаются границы (в логических координатах)
+ * отображаемых данных. Размер видимой области в пикселях может превышать размер окна виджета,
+ * но при отображении обрезается по границе окантовки.
+ *
+ * Для полноценного использования #GtkCifroArea необходимо чтобы разрабатываемый класс был
+ * унаследован от #GtkCifroArea или #GtkCifroAreaControl. В нём необходимо переопределить
+ * виртуальные функции базового класса #GtkCifroAreaClass и добавить обработчики сигналов
+ * #GtkCifroArea::area-draw и #GtkCifroArea::visible-draw.
  *
  */
 
@@ -47,115 +79,81 @@ enum
   SIGNAL_LAST
 };
 
-struct _GtkCifroAreaPrivate
+enum
 {
-  cairo_t             *visible_cairo;          /* Объект для рисования в видимой области. */
-
-  gint                 border_left;            /* Размер области обрамления слева. */
-  gint                 border_right;           /* Размер области обрамления справа. */
-  gint                 border_top;             /* Размер области обрамления сверху. */
-  gint                 border_bottom;          /* Размер области обрамления снизу. */
-
-  gboolean             clip;                   /* Ограничивать или нет отрисовку областью внутри элемента обрамления. */
-  gint                 clip_x;                 /* Начало области ограничения слева. */
-  gint                 clip_y;                 /* Начало области ограничения сверху. */
-  gint                 clip_width;             /* Ширина области ограничения. */
-  gint                 clip_height;            /* Высота области ограничения. */
-
-  gboolean             swap_x;                 /* TRUE - ось x направлена влево, FALSE - вправо. */
-  gboolean             swap_y;                 /* TRUE - ось y направлена вниз, FALSE - вверх. */
-
-  gboolean             scale_on_resize;        /* Изменять == TRUE или нет масштаб при изменении размера окна. */
-  gdouble              scale_aspect;           /* Соотношение масштабов: scale_x / scale_y. В случае <= 0 - свободное соотношение. */
-
-  gboolean             rotation;               /* Разрешён поворот или нет. */
-  gdouble              angle;                  /* Угол поворота изображения в радианах. */
-  gdouble              angle_cos;              /* Косинус угла поворота изображения. */
-  gdouble              angle_sin;              /* Синус угла поворота изображения. */
-
-  gdouble              from_x;                 /* Граница отображения по оси x слева. */
-  gdouble              to_x;                   /* Граница отображения по оси x справа. */
-  gdouble              from_y;                 /* Граница отображения по оси y снизу. */
-  gdouble              to_y;                   /* Граница отображения по оси y сверху. */
-
-  gdouble              min_x;                  /* Минимально возможное значение по оси x. */
-  gdouble              max_x;                  /* Максимально возможное значение по оси x. */
-  gdouble              min_y;                  /* Минимально возможное значение по оси y. */
-  gdouble              max_y;                  /* Максимально возможное значение по оси y. */
-
-  gdouble              cur_scale_x;            /* Текущий коэффициент масштаба по оси x. */
-  gdouble              min_scale_x;            /* Минимально возможный коэффициент масштаба по оси x (приближение). */
-  gdouble              max_scale_x;            /* Максимально возможный коэффициент масштаба по оси x (отдаление). */
-  gdouble              cur_scale_y;            /* Текущий коэффициент масштаба по оси y. */
-  gdouble              min_scale_y;            /* Минимально возможный коэффициент масштаба по оси y (приближение). */
-  gdouble              max_scale_y;            /* Максимально возможный коэффициент масштаба по оси y (отдаление). */
-
-  gint                 widget_width;           /* Ширина окна CifroArea. */
-  gint                 widget_height;          /* Высота окна CifroArea. */
-  gint                 visible_width;          /* Ширина видимой области лля отрисовки данных. */
-  gint                 visible_height;         /* Высота видимой области для отрисовки данных. */
-
-  gboolean             zoom_on_center;         /* Устанавливать центр области масштабирования по курсору или нет. */
-  gdouble              zoom_scale;             /* Коэффициент изменения масштаба. */
-
-  gdouble             *zoom_x_scales;          /* Набор коэффициентов масштабирования по оси x. */
-  gdouble             *zoom_y_scales;          /* Набор коэффициентов масштабирования по оси y. */
-  gint                 num_scales;             /* Число коэффициентов масштабирования. */
-  gint                 cur_zoom_index;         /* Текущий индекс коэффициента масштабирования. */
-
-  gboolean             draw_focus;             /* Рисовать или нет индикатор наличия фокуса ввода. */
-
-  gdouble              move_multiplier;        /* Значение множителя скорости перемещения при нажатой клавише control. */
-  gdouble              rotate_multiplier;      /* Значение множителя скорости вращения при нажатой клавише control. */
-
-  gboolean             move_area;              /* Признак перемещения при нажатой клавише мыши. */
-  gint                 move_start_x;           /* Начальная координата x перемещения. */
-  gint                 move_start_y;           /* Начальная координата y перемещения. */
-
-  GdkCursor           *current_cursor;         /* Текущий курсор. */
-  GdkCursor           *point_cursor;           /* Курсор используемый при нахождении мышки в видимой области. */
-  GdkCursor           *move_cursor;            /* Курсор используемый при перемещении видимой области. */
+  SCROLL_ACTION_NONE,
+  SCROLL_ACTION_MOVE_X,
+  SCROLL_ACTION_MOVE_Y,
+  SCROLL_ACTION_ZOOM_X,
+  SCROLL_ACTION_ZOOM_Y,
+  SCROLL_ACTION_ZOOM_BOTH,
+  SCROLL_ACTION_ROTATE
 };
 
-static void            gtk_cifro_area_object_constructed       (GObject                       *carea);
+struct _GtkCifroAreaPrivate
+{
+  cairo_t               *visible_cairo;        /* Объект для рисования в видимой области. */
+
+  gboolean               swap_x;               /* TRUE - ось x направлена влево, FALSE - вправо. */
+  gboolean               swap_y;               /* TRUE - ось y направлена вниз, FALSE - вверх. */
+
+  gboolean               rotate;               /* Разрешение поворота. */
+  gdouble                angle;                /* Угол поворота изображения в радианах. */
+  gdouble                angle_cos;            /* Косинус угла поворота изображения. */
+  gdouble                angle_sin;            /* Синус угла поворота изображения. */
+
+  GtkCifroAreaStickType  stick_x;              /* Выравнивание по оси x, если видимая область больше отображаемой. */
+  GtkCifroAreaStickType  stick_y;              /* Выравнивание по оси y, если видимая область больше отображаемой. */
+
+  guint                  border_left;          /* Размер области обрамления слева. */
+  guint                  border_right;         /* Размер области обрамления справа. */
+  guint                  border_top;           /* Размер области обрамления сверху. */
+  guint                  border_bottom;        /* Размер области обрамления снизу. */
+
+  guint                  widget_width;         /* Ширина виджета CifroArea. */
+  guint                  widget_height;        /* Высота виджета CifroArea. */
+  guint                  visible_width;        /* Ширина видимой области для отрисовки данных. */
+  guint                  visible_height;       /* Высота видимой области для отрисовки данных. */
+  guint                  clip_width;           /* Ширина окна для отображения видимой области. */
+  guint                  clip_height;          /* Высота окна для отображения видимой области. */
+
+  gdouble                min_x;                /* Минимально возможное значение по оси x. */
+  gdouble                max_x;                /* Максимально возможное значение по оси x. */
+  gdouble                min_y;                /* Минимально возможное значение по оси y. */
+  gdouble                max_y;                /* Максимально возможное значение по оси y. */
+
+  gdouble                from_x;               /* Граница отображения по оси x слева. */
+  gdouble                to_x;                 /* Граница отображения по оси x справа. */
+  gdouble                from_y;               /* Граница отображения по оси y снизу. */
+  gdouble                to_y;                 /* Граница отображения по оси y сверху. */
+
+  gboolean               scale_on_resize;      /* Изменять (TRUE) или нет (FALSE) масштаб при изменении размера окна. */
+  gdouble                scale_x;              /* Текущий коэффициент масштаба по оси x. */
+  gdouble                scale_y;              /* Текущий коэффициент масштаба по оси y. */
+};
+
 static void            gtk_cifro_area_object_finalize          (GObject                       *carea);
 
 static gint            gtk_cifro_area_get_visible_width        (gdouble                        width,
                                                                 gdouble                        height,
                                                                 gdouble                        angle);
+
 static gint            gtk_cifro_area_get_visible_height       (gdouble                        width,
                                                                 gdouble                        height,
                                                                 gdouble                        angle);
-static gboolean        gtk_cifro_area_fix_scale_aspect         (gdouble                        scale_aspect,
-                                                                gdouble                       *min_scale_x,
-                                                                gdouble                       *max_scale_x,
-                                                                gdouble                       *min_scale_y,
-                                                                gdouble                       *max_scale_y );
-static void            gtk_cifro_area_update_visible           (GtkCifroAreaPrivate           *priv);
 
-static gboolean        gtk_cifro_area_key_press                (GtkWidget                     *widget,
-                                                                GdkEventKey                   *event,
-                                                                gpointer                       data);
-static gboolean        gtk_cifro_area_button_press_release     (GtkWidget                     *widget,
-                                                                GdkEventButton                *event,
-                                                                gpointer                       data);
-static gboolean        gtk_cifro_area_motion                   (GtkWidget                     *widget,
-                                                                GdkEventMotion                *event,
-                                                                gpointer                       data);
-static gboolean        gtk_cifro_area_scroll                   (GtkWidget                     *widget,
-                                                                GdkEventScroll                *event,
-                                                                gpointer                       data);
+static void            gtk_cifro_area_update_visible           (GtkCifroArea                  *carea,
+                                                                gboolean                       update_scale);
 
 static gboolean        gtk_cifro_area_configure                (GtkWidget                     *widget,
-                                                                GdkEventConfigure             *event,
-                                                                gpointer                       data);
+                                                                GdkEventConfigure             *event);
+
 static gboolean        gtk_cifro_area_draw                     (GtkWidget                     *widget,
-                                                                cairo_t                       *cairo,
-                                                                gpointer                       data);
+                                                                cairo_t                       *cairo);
+
 #ifdef CIFRO_AREA_WITH_GTK2
 static gboolean        gtk_cifro_area_expose                   (GtkWidget                     *widget,
-                                                                GdkEventExpose                *event,
-                                                                gpointer                       data);
+                                                                GdkEventExpose                *event);
 #endif
 
 static guint gtk_cifro_area_signals [SIGNAL_LAST] = {0};
@@ -165,79 +163,22 @@ G_DEFINE_TYPE_WITH_PRIVATE (GtkCifroArea, gtk_cifro_area, GTK_TYPE_DRAWING_AREA)
 static void
 gtk_cifro_area_init (GtkCifroArea *carea)
 {
-  carea->priv = gtk_cifro_area_get_instance_private (carea);
-}
-
-static void
-gtk_cifro_area_class_init (GtkCifroAreaClass *klass)
-{
-  GObjectClass *object_class = G_OBJECT_CLASS (klass);
-
-  object_class->constructed = gtk_cifro_area_object_constructed;
-  object_class->finalize = gtk_cifro_area_object_finalize;
-
-  gtk_cifro_area_signals[SIGNAL_VISIBLE_DRAW] =
-    g_signal_new ("visible-draw", GTK_TYPE_CIFRO_AREA,
-                  G_SIGNAL_RUN_LAST, 0,
-                  NULL, NULL,
-                  g_cclosure_marshal_VOID__POINTER,
-                  G_TYPE_NONE,
-                  1, G_TYPE_POINTER);
-
-  gtk_cifro_area_signals[SIGNAL_AREA_DRAW] =
-    g_signal_new ("area-draw", GTK_TYPE_CIFRO_AREA,
-                  G_SIGNAL_RUN_LAST, 0,
-                  NULL, NULL,
-                  g_cclosure_marshal_VOID__POINTER,
-                  G_TYPE_NONE,
-                  1, G_TYPE_POINTER);
-}
-
-static void
-gtk_cifro_area_object_constructed (GObject *object)
-{
-  GtkCifroArea *carea = GTK_CIFRO_AREA (object);
-  GtkCifroAreaPrivate *priv = carea->priv;
-
+  GtkCifroAreaPrivate *priv = gtk_cifro_area_get_instance_private (carea);
   gint event_mask = 0;
 
-  G_OBJECT_CLASS (gtk_cifro_area_parent_class)->constructed (object);
+  carea->priv = priv;
 
-  priv->rotation = TRUE;
   priv->angle = 0.0;
-  priv->angle_cos = cos (priv->angle);
-  priv->angle_sin = sin (priv->angle);
-
-  priv->cur_scale_x = 0.0;
-  priv->min_scale_x = 0.001;
-  priv->max_scale_x = 1000.0;
-  priv->cur_scale_y = 0.0;
-  priv->min_scale_y = 0.001;
-  priv->max_scale_y = 1000.0;
+  priv->angle_cos = 1.0;
+  priv->angle_sin = 0.0;
 
   priv->from_x = -1.0;
   priv->to_x = 1.0;
   priv->from_y = -1.0;
   priv->to_y = 1.0;
 
-  priv->min_x = -1.0;
-  priv->max_x = 1.0;
-  priv->min_y = -1.0;
-  priv->max_y = 1.0;
-
-  priv->zoom_on_center = FALSE;
-  priv->zoom_scale = 10.0;
-
-  priv->draw_focus = TRUE;
-
-  priv->move_multiplier = 10.0;
-  priv->rotate_multiplier = 2.0;
-
-  priv->current_cursor = NULL;
-  priv->point_cursor = gdk_cursor_new_for_display (gdk_display_get_default (), GDK_CROSSHAIR);
-  priv->move_cursor = gdk_cursor_new_for_display (gdk_display_get_default (), GDK_FLEUR);
-
   event_mask |= GDK_KEY_PRESS_MASK;
+  event_mask |= GDK_KEY_RELEASE_MASK;
   event_mask |= GDK_BUTTON_PRESS_MASK;
   event_mask |= GDK_BUTTON_RELEASE_MASK;
   event_mask |= GDK_POINTER_MOTION_MASK;
@@ -245,19 +186,60 @@ gtk_cifro_area_object_constructed (GObject *object)
   event_mask |= GDK_SCROLL_MASK;
   gtk_widget_add_events (GTK_WIDGET (carea), event_mask);
   gtk_widget_set_can_focus (GTK_WIDGET (carea), TRUE);
+}
 
-  g_signal_connect (carea, "configure-event", G_CALLBACK (gtk_cifro_area_configure), NULL);
-  g_signal_connect_after (carea, "key-press-event", G_CALLBACK (gtk_cifro_area_key_press), NULL);
-  g_signal_connect_after (carea, "button-press-event", G_CALLBACK (gtk_cifro_area_button_press_release), NULL);
-  g_signal_connect_after (carea, "button-release-event", G_CALLBACK (gtk_cifro_area_button_press_release), NULL);
-  g_signal_connect_after (carea, "motion-notify-event", G_CALLBACK (gtk_cifro_area_motion), NULL);
-  g_signal_connect_after (carea, "scroll-event", G_CALLBACK (gtk_cifro_area_scroll), NULL);
+static void
+gtk_cifro_area_class_init (GtkCifroAreaClass *klass)
+{
+  GObjectClass *object_class = G_OBJECT_CLASS (klass);
+  GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
 
+  object_class->finalize = gtk_cifro_area_object_finalize;
+  widget_class->configure_event = gtk_cifro_area_configure;
 #ifdef CIFRO_AREA_WITH_GTK2
-  g_signal_connect (carea , "expose-event", G_CALLBACK (gtk_cifro_area_expose), NULL);
+  widget_class->expose_event = gtk_cifro_area_expose;
 #else
-  g_signal_connect (carea, "draw", G_CALLBACK (gtk_cifro_area_draw), NULL);
+  widget_class->draw = gtk_cifro_area_draw;
 #endif
+
+  /**
+   * GtkCifroArea::visible-draw:
+   * @carea: объект получивший сигнал
+   * @cairo: объект #cairo_t для рисования
+   *
+   * Сигнал отправляется при необходимости перерисовки изображения. Этот сигнал используется
+   * для формирования изображения в видимой области. Конетекст cairo всегда имеет тип
+   * [Cairo Image Surface] и допускает прямой доступ к памяти для ускорения формирования
+   * изображения.
+   *
+   */
+  gtk_cifro_area_signals[SIGNAL_VISIBLE_DRAW] =
+    g_signal_new ("visible-draw",
+                  GTK_TYPE_CIFRO_AREA,
+                  G_SIGNAL_RUN_FIRST | G_SIGNAL_ACTION,
+                  0,
+                  NULL, NULL,
+                  g_cclosure_marshal_VOID__POINTER,
+                  G_TYPE_NONE, 1, G_TYPE_POINTER);
+
+  /**
+   * GtkCifroArea::area-draw:
+   * @carea: объект получивший сигнал
+   * @cairo: объект #cairo_t для рисования
+   *
+   * Сигнал отправляется при необходимости перерисовки изображения. Этот сигнал
+   * аналогичен сигналам #GtkWidget::expose для Gtk 2.0 и #GtkWidget::draw для Gtk 3.0,
+   * но отправляется в самом конце цикла перерисовки, после #GtkCifroArea::visible-draw.
+   *
+   */
+  gtk_cifro_area_signals[SIGNAL_AREA_DRAW] =
+    g_signal_new ("area-draw",
+                  GTK_TYPE_CIFRO_AREA,
+                  G_SIGNAL_RUN_FIRST | G_SIGNAL_ACTION,
+                  0,
+                  NULL, NULL,
+                  g_cclosure_marshal_VOID__POINTER,
+                  G_TYPE_NONE, 1, G_TYPE_POINTER);
 }
 
 static void
@@ -266,19 +248,7 @@ gtk_cifro_area_object_finalize (GObject *object)
   GtkCifroArea *carea = GTK_CIFRO_AREA (object);
   GtkCifroAreaPrivate *priv = carea->priv;
 
-  cairo_destroy (priv->visible_cairo);
-
-#ifdef CIFRO_AREA_WITH_GTK2
-  if (priv->point_cursor)
-    gdk_cursor_unref (priv->point_cursor);
-  if (priv->move_cursor)
-    gdk_cursor_unref (priv->move_cursor);
-#else
-  if (priv->point_cursor)
-    g_object_unref (priv->point_cursor);
-  if (priv->move_cursor)
-    g_object_unref (priv->move_cursor);
-#endif
+  g_clear_pointer (&priv->visible_cairo, cairo_destroy);
 
   G_OBJECT_CLASS (gtk_cifro_area_parent_class)->finalize (object);
 }
@@ -319,122 +289,77 @@ gtk_cifro_area_get_visible_height (gdouble width,
   return visible_height;
 }
 
-/* Функция коррекции диапазонов масштабов при фиксированых соотношениях. */
-static gboolean
-gtk_cifro_area_fix_scale_aspect (gdouble  scale_aspect,
-                                 gdouble *min_scale_x,
-                                 gdouble *max_scale_x,
-                                 gdouble *min_scale_y,
-                                 gdouble *max_scale_y)
-{
-  gdouble new_min_scale_x;
-  gdouble new_max_scale_x;
-  gdouble new_min_scale_y;
-  gdouble new_max_scale_y;
-
-  if (scale_aspect <= 0.0)
-    return TRUE;
-
-  new_min_scale_y = CLAMP (*min_scale_x * scale_aspect, *min_scale_y, *max_scale_y);
-  new_max_scale_y = CLAMP (*max_scale_x * scale_aspect, *min_scale_y, *max_scale_y);
-
-  if (new_min_scale_y == new_max_scale_y)
-    return FALSE;
-
-  new_min_scale_x = CLAMP (new_min_scale_y / scale_aspect, *min_scale_x, *max_scale_x);
-  new_max_scale_x = CLAMP (new_max_scale_y / scale_aspect, *min_scale_x, *max_scale_x);
-
-  if (new_min_scale_x == new_max_scale_x)
-    return FALSE;
-
-  *min_scale_x = new_min_scale_x;
-  *max_scale_x = new_max_scale_x;
-  *min_scale_y = new_min_scale_y;
-  *max_scale_y = new_max_scale_y;
-
-  return TRUE;
-}
-
 /* Функция перерасчёта параметров отображения. */
 static void
-gtk_cifro_area_update_visible (GtkCifroAreaPrivate *priv)
+gtk_cifro_area_update_visible (GtkCifroArea *carea,
+                               gboolean      update_scale)
 {
-  gdouble width;
-  gdouble height;
-  gdouble visible_width;
-  gdouble visible_height;
-  gdouble new_scale_x;
-  gdouble new_scale_y;
-  gdouble x_width;
-  gdouble y_height;
-  gdouble x, y;
+  GtkCifroAreaPrivate *priv = carea->priv;
 
-  gint ivisible_width;
-  gint ivisible_height;
+  gint visible_width, visible_height;
+  gdouble x_width, y_height;
 
-  /* Размер видимой области отображения. */
-  width = priv->widget_width - priv->border_left - priv->border_right;
-  height = priv->widget_height - priv->border_top - priv->border_bottom;
+  /* Параметры отображения. */
+  priv->rotate = gtk_cifro_area_get_rotate (carea);
+  gtk_cifro_area_get_swap (carea, &priv->swap_x, &priv->swap_y);
+  gtk_cifro_area_get_stick (carea, &priv->stick_x, &priv->stick_y);
+  gtk_cifro_area_get_border (carea, &priv->border_top, &priv->border_bottom,
+                                    &priv->border_left, &priv->border_right);
+
+  priv->clip_width = 0;
+  priv->clip_height = 0;
+  priv->visible_width = 0;
+  priv->visible_height = 0;
 
   /* Проверяем размеры виджета. */
-  if (width <= 0 || height <= 0)
-    return;
-
-  /* Размер видимой области отображения с учётом поворота. */
-  visible_width = gtk_cifro_area_get_visible_width (width, height, priv->angle);
-  visible_height = gtk_cifro_area_get_visible_height (width, height, priv->angle);
-
-  /* Расчёт масштабов в начале и при задании области видимости. */
-  if ((priv->cur_scale_x == 0.0) && (priv->cur_scale_y == 0.0))
+  if ((priv->widget_width <= (priv->border_left + priv->border_right)) ||
+      (priv->widget_height <= (priv->border_top + priv->border_bottom)))
     {
-      priv->cur_scale_x = (priv->to_x - priv->from_x) / visible_width;
-      priv->cur_scale_y = (priv->to_y - priv->from_y) / visible_height;
+      return;
     }
 
-  /* Коррекция масштабов в случае заданного соотношения. */
-  if (priv->scale_aspect > 0.0 && priv->num_scales == 0)
-    {
-      new_scale_x = priv->cur_scale_y / priv->scale_aspect;
-      new_scale_y = priv->cur_scale_x * priv->scale_aspect;
-      new_scale_x = CLAMP (new_scale_x, priv->min_scale_x, priv->max_scale_x);
-      new_scale_y = CLAMP (new_scale_y, priv->min_scale_y, priv->max_scale_y);
+  /* Размер видимой области отображения. */
+  priv->clip_width = priv->widget_width - priv->border_left - priv->border_right;
+  priv->clip_height = priv->widget_height - priv->border_top - priv->border_bottom;
 
-      if (new_scale_x < new_scale_y)
+  /* Размер видимой области отображения с учётом поворота. */
+  visible_width = gtk_cifro_area_get_visible_width (priv->clip_width, priv->clip_height, priv->angle);
+  visible_height = gtk_cifro_area_get_visible_height (priv->clip_width, priv->clip_height, priv->angle);
+
+  /* Обновляем коэффициенты масштабирования. */
+  if (update_scale)
+    {
+      priv->scale_x = (priv->to_x - priv->from_x) / visible_width;
+      priv->scale_y = (priv->to_y - priv->from_y) / visible_height;
+
+      gtk_cifro_area_check_scale (carea, &priv->scale_x, &priv->scale_y);
+    }
+
+  /* Пределы перемещения изображения. */
+  gtk_cifro_area_get_limits (carea, &priv->min_x, &priv->max_x, &priv->min_y, &priv->max_y);
+
+  /* Обновляем границы отображения если пределы перемещения меньше чем границы видимости. */
+  x_width = priv->scale_x * visible_width;
+  if (x_width > (priv->max_x - priv->min_x))
+    {
+      if (priv->stick_x == GTK_CIFRO_AREA_STICK_LEFT)
         {
-          priv->cur_scale_x = new_scale_x;
-          priv->cur_scale_y = new_scale_x / priv->scale_aspect;
+          priv->from_x = priv->min_x;
+          priv->to_x = priv->min_x + x_width;
+        }
+      else if (priv->stick_x == GTK_CIFRO_AREA_STICK_RIGHT)
+        {
+          priv->from_x = priv->max_x - x_width;
+          priv->to_x = priv->max_x;
         }
       else
         {
-          priv->cur_scale_y = new_scale_y;
-          priv->cur_scale_x = new_scale_y * priv->scale_aspect;
+          priv->from_x = (priv->min_x + ((priv->max_x - priv->min_x) / 2.0)) - (x_width / 2.0);
+          priv->to_x = priv->from_x + x_width;
         }
-    }
-
-  /* Проверка на выход за границы, кроме случая фиксированных значений. */
-  if (priv->num_scales == 0)
-    {
-      priv->cur_scale_x = CLAMP (priv->cur_scale_x, priv->min_scale_x, priv->max_scale_x);
-      priv->cur_scale_y = CLAMP (priv->cur_scale_y, priv->min_scale_y, priv->max_scale_y);
-    }
-
-  /* Расчёт области видимости для получившихся масштабов и проверка
-     на выход за границы допустимых значений. */
-  x = priv->from_x + (priv->to_x - priv->from_x) / 2.0;
-  y = priv->from_y + (priv->to_y - priv->from_y) / 2.0;
-
-  x_width = priv->cur_scale_x * visible_width;
-  y_height = priv->cur_scale_y * visible_height;
-
-  if (x_width >= priv->max_x - priv->min_x)
-    {
-      priv->from_x = priv->min_x;
-      priv->to_x = priv->max_x;
     }
   else
     {
-      priv->from_x = x - x_width / 2.0;
-      priv->to_x = x + x_width / 2.0;
       if (priv->from_x < priv->min_x)
         {
           priv->from_x = priv->min_x;
@@ -447,15 +372,27 @@ gtk_cifro_area_update_visible (GtkCifroAreaPrivate *priv)
         }
     }
 
-  if (y_height >= priv->max_y - priv->min_y)
+  y_height = priv->scale_y * visible_height;
+  if (y_height > (priv->max_y - priv->min_y))
     {
-      priv->from_y = priv->min_y;
-      priv->to_y = priv->max_y;
+      if (priv->stick_y == GTK_CIFRO_AREA_STICK_TOP)
+        {
+          priv->from_y = priv->max_y - y_height;
+          priv->to_y = priv->max_y;
+        }
+      else if (priv->stick_y == GTK_CIFRO_AREA_STICK_BOTTOM)
+        {
+          priv->from_y = priv->min_y;
+          priv->to_y = priv->min_y + y_height;
+        }
+      else
+        {
+          priv->from_y = (priv->min_y + ((priv->max_y - priv->min_y) / 2.0)) - (y_height / 2.0);
+          priv->to_y = priv->from_y + y_height;
+        }
     }
   else
     {
-      priv->from_y = y - y_height / 2.0;
-      priv->to_y = y + y_height / 2.0;
       if (priv->from_y < priv->min_y)
         {
           priv->from_y = priv->min_y;
@@ -468,293 +405,40 @@ gtk_cifro_area_update_visible (GtkCifroAreaPrivate *priv)
         }
     }
 
-  /* Перерасчёт размеров видимой области в соответствии со скорректированной областью видимости. */
-  visible_width = (priv->to_x - priv->from_x) / priv->cur_scale_x;
-  visible_height = (priv->to_y - priv->from_y) / priv->cur_scale_y;
-  ivisible_width = round (visible_width);
-  ivisible_height = round (visible_height);
-
   /* Размеры видимой области изменились. */
-  if ((priv->visible_width != ivisible_width) || (priv->visible_height != ivisible_height))
+  if ((priv->visible_width != visible_width) || (priv->visible_height != visible_height))
     {
       /* Если новые размеры стали больше, пересоздаём объекты рисования в видимой области. */
-      if (ivisible_width > priv->visible_width || ivisible_height > priv->visible_height)
+      if (visible_width > priv->visible_width || visible_height > priv->visible_height)
         {
           cairo_surface_t *surface;
 
           if (priv->visible_cairo != NULL)
             cairo_destroy (priv->visible_cairo);
 
-          surface = cairo_image_surface_create (CAIRO_FORMAT_ARGB32, ivisible_width, ivisible_height);
+          surface = cairo_image_surface_create (CAIRO_FORMAT_ARGB32, visible_width, visible_height);
           priv->visible_cairo = cairo_create (surface);
           cairo_surface_destroy (surface);
         }
 
       /* Запоминаем новые размеры видимой области и ссобщаем их. */
-      priv->visible_width = ivisible_width;
-      priv->visible_height = ivisible_height;
+      priv->visible_width = visible_width;
+      priv->visible_height = visible_height;
     }
-
-  /* Границы маски рисования слоёв с поворотом. */
-  if (priv->border_left || priv->border_right || priv->border_top || priv->border_bottom)
-    {
-      priv->clip_x = priv->border_left;
-      priv->clip_y = priv->border_top;
-      priv->clip_width = priv->widget_width - priv->border_left - priv->border_right;
-      priv->clip_height = priv->widget_height - priv->border_top - priv->border_bottom;
-      priv->clip = TRUE;
-    }
-  else
-    {
-      priv->clip_width = priv->widget_width;
-      priv->clip_height = priv->widget_height;
-      priv->clip = FALSE;
-    }
-}
-
-/* Обработчик нажатия кнопок клавиатуры. */
-static gboolean
-gtk_cifro_area_key_press (GtkWidget   *widget,
-                          GdkEventKey *event,
-                          gpointer     data)
-{
-  GtkCifroArea *carea = GTK_CIFRO_AREA (widget);
-  GtkCifroAreaPrivate *priv = carea->priv;
-
-  /* Перемещение области. */
-  if (((event->keyval == GDK_KEY_Left) || (event->keyval == GDK_KEY_Right) ||
-       (event->keyval == GDK_KEY_Up) || (event->keyval == GDK_KEY_Down)) &&
-      !(event->state & GDK_SHIFT_MASK))
-    {
-      gdouble multiplier = (event->state & GDK_CONTROL_MASK) ? priv->move_multiplier : 1.0;
-      gdouble step_x = 0;
-      gdouble step_y = 0;
-
-      if (event->keyval == GDK_KEY_Left)
-        {
-          step_x = multiplier;
-        }
-      if (event->keyval == GDK_KEY_Right)
-        {
-          step_x = -multiplier;
-        }
-      if (event->keyval == GDK_KEY_Up)
-        {
-          step_y = -multiplier;
-        }
-      if (event->keyval == GDK_KEY_Down)
-        {
-          step_y = multiplier;
-        }
-
-      gtk_cifro_area_move (GTK_CIFRO_AREA (widget), step_x, step_y);
-
-      return TRUE;
-    }
-
-  /* Поворот области. */
-  if ((event->state & GDK_SHIFT_MASK) && ((event->keyval == GDK_KEY_Left) || (event->keyval == GDK_KEY_Right)))
-    {
-      gdouble multiplier = (event->state & GDK_CONTROL_MASK) ? priv->rotate_multiplier : 1.0;
-      gdouble angle = 0.0;
-
-      if (event->keyval == GDK_KEY_Left)
-        angle = -G_PI / 180.0 * multiplier;
-      if (event->keyval == GDK_KEY_Right)
-        angle = G_PI / 180.0 * multiplier;
-
-      gtk_cifro_area_rotate (GTK_CIFRO_AREA (widget), angle);
-
-      return TRUE;
-    }
-
-  /* Масштабирование области. */
-  if ((event->keyval == GDK_KEY_KP_Add) || (event->keyval == GDK_KEY_KP_Subtract) ||
-      (event->keyval == GDK_KEY_plus) || (event->keyval == GDK_KEY_minus))
-    {
-      gboolean zoom_x = TRUE;
-      gboolean zoom_y = TRUE;
-      gboolean zoom_in = TRUE;
-      gdouble val_x, val_y;
-
-      if (event->state & GDK_CONTROL_MASK)
-        zoom_x = FALSE;
-      if (event->state & GDK_MOD1_MASK)
-        zoom_y = FALSE;
-      if ((event->keyval == GDK_KEY_KP_Subtract) || (event->keyval == GDK_KEY_minus))
-        zoom_in = FALSE;
-
-      val_x = priv->from_x + (priv->to_x - priv->from_x) / 2.0;
-      val_y = priv->from_y + (priv->to_y - priv->from_y) / 2.0;
-
-      if (priv->num_scales)
-        gtk_cifro_area_fixed_zoom (GTK_CIFRO_AREA (widget), val_x, val_y, zoom_in);
-      else
-        gtk_cifro_area_zoom (GTK_CIFRO_AREA (widget), zoom_x, zoom_y, val_x, val_y, zoom_in, priv->zoom_scale);
-
-      return TRUE;
-    }
-
-  return FALSE;
-}
-
-/* Обработчик нажатия кнопок мышки. */
-static gboolean
-gtk_cifro_area_button_press_release (GtkWidget      *widget,
-                                     GdkEventButton *event,
-                                     gpointer        data)
-{
-  GtkCifroArea *carea = GTK_CIFRO_AREA (widget);
-  GtkCifroAreaPrivate *priv = carea->priv;
-  GdkWindow *window = gtk_widget_get_window (widget);
-
-  if (event->type == GDK_BUTTON_PRESS && (event->button == 1))
-    {
-      gtk_widget_grab_focus (widget);
-
-      /* Нажата левая клавиша мышки в области обрамления - переходим в режим перемещения. */
-      if ((event->x > priv->clip_x) && (event->x < priv->clip_x + priv->clip_width) &&
-          (event->y > priv->clip_y) && (event->y < priv->clip_x + priv->clip_height))
-        {
-          priv->move_area = TRUE;
-          priv->move_start_x = event->x;
-          priv->move_start_y = event->y;
-
-          gdk_window_set_cursor (window, priv->move_cursor);
-
-          return TRUE;
-        }
-    }
-
-  /* Выключаем режим перемещения. */
-  if (event->type == GDK_BUTTON_RELEASE && (event->button == 1))
-    {
-      priv->move_area = FALSE;
-
-      gdk_window_set_cursor (window, priv->point_cursor);
-
-      return TRUE;
-    }
-
-  return FALSE;
-}
-
-/* Обработчик перемещений курсора мыши. */
-static gboolean
-gtk_cifro_area_motion (GtkWidget      *widget,
-                       GdkEventMotion *event,
-                       gpointer        data)
-{
-  GtkCifroArea *carea = GTK_CIFRO_AREA (widget);
-  GtkCifroAreaPrivate *priv = carea->priv;
-  GdkWindow *window = gtk_widget_get_window (widget);
-
-  gint x = event->x;
-  gint y = event->y;
-
-  /* Устанавливаем вид курсора в зависимости от области нахождения. */
-  if (!priv->move_area)
-    {
-      if ((x > priv->clip_x) && (x < priv->clip_x + priv->clip_width) &&
-          (y > priv->clip_y) && (y < priv->clip_x + priv->clip_height))
-        {
-          gdk_window_set_cursor (window, priv->point_cursor);
-        }
-      else
-        {
-          gdk_window_set_cursor (window, NULL);
-        }
-    }
-
-  /* Режим перемещения - сдвигаем область. */
-  if (priv->move_area)
-    {
-      gtk_cifro_area_move (GTK_CIFRO_AREA (widget), priv->move_start_x - x, y - priv->move_start_y);
-
-      priv->move_start_x = x;
-      priv->move_start_y = y;
-    }
-
-  gdk_event_request_motions (event);
-
-  return FALSE;
-}
-
-/* Обработчик событий прокрутки колёсика мышки - масштабирование. */
-static gboolean
-gtk_cifro_area_scroll (GtkWidget      *widget,
-                       GdkEventScroll *event,
-                       gpointer        data)
-{
-  GtkCifroArea *carea = GTK_CIFRO_AREA (widget);
-  GtkCifroAreaPrivate *priv = carea->priv;
-
-  gboolean zoom_x;
-  gboolean zoom_y;
-  gboolean zoom_in;
-  gdouble val_x, val_y;
-
-  /* Обрабатываем только события внутри области отображения данных. */
-  if ((event->x < priv->clip_x) || (event->x > priv->clip_x + priv->clip_width))
-    return TRUE;
-  if ((event->y < priv->clip_y) || (event->y > priv->clip_x + priv->clip_height))
-    return TRUE;
-
-  if (!(event->state & GDK_SHIFT_MASK) && !(event->state & GDK_CONTROL_MASK) && !(event->state & GDK_MOD1_MASK))
-    return TRUE;
-
-  /* Параметры масштабирования. */
-  zoom_x = (event->state & GDK_SHIFT_MASK) || (event->state & GDK_MOD1_MASK);
-  zoom_y = (event->state & GDK_SHIFT_MASK) || (event->state & GDK_CONTROL_MASK);
-  zoom_in = (event->direction == GDK_SCROLL_UP) ? TRUE : FALSE;
-
-  /* Точка, относительно которой будет производится масштабирование. */
-  if (priv->zoom_on_center)
-    {
-      val_x = priv->from_x + (priv->to_x - priv->from_x) / 2.0;
-      val_y = priv->from_y + (priv->to_y - priv->from_y) / 2.0;
-    }
-  else
-    {
-      gtk_cifro_area_visible_point_to_value (GTK_CIFRO_AREA (widget), event->x, event->y, &val_x, &val_y);
-      if ((val_x < priv->min_x) || (val_x > priv->max_x))
-        return TRUE;
-      if ((val_y < priv->min_y) || (val_y > priv->max_y))
-        return TRUE;
-    }
-
-  /* Масштабирование. */
-  if (priv->num_scales)
-    gtk_cifro_area_fixed_zoom (GTK_CIFRO_AREA (widget), val_x, val_y, zoom_in);
-  else
-    gtk_cifro_area_zoom (GTK_CIFRO_AREA (widget), zoom_x, zoom_y, val_x, val_y, zoom_in, priv->zoom_scale);
-
-  return TRUE;
 }
 
 /* Обработчик изменения размеров виджета. */
 static gboolean
 gtk_cifro_area_configure (GtkWidget         *widget,
-                          GdkEventConfigure *event,
-                          gpointer           data)
+                          GdkEventConfigure *event)
 {
   GtkCifroArea *carea = GTK_CIFRO_AREA (widget);
   GtkCifroAreaPrivate *priv = carea->priv;
 
-  gint widget_width = event->width - (event->width % 2);
-  gint widget_height = event->height - (event->height % 2);
-
-  if (priv->widget_width == widget_width && priv->widget_height == widget_height)
-    return FALSE;
-
   /* Новые размеры виджета. */
-  priv->widget_width = widget_width;
-  priv->widget_height = widget_height;
-
-  if (priv->scale_on_resize && (priv->scale_aspect < 0.0))
-    gtk_cifro_area_set_view (GTK_CIFRO_AREA (widget), priv->from_x, priv->to_x, priv->from_y, priv->to_y);
-  else
-    gtk_cifro_area_update_visible (priv);
+  priv->widget_width = event->width - (event->width % 2);
+  priv->widget_height = event->height - (event->height % 2);
+  gtk_cifro_area_update_visible (carea, priv->scale_on_resize);
 
   return FALSE;
 }
@@ -762,17 +446,19 @@ gtk_cifro_area_configure (GtkWidget         *widget,
 /* Обработчик рисования содержимого виджета GTK 3. */
 static gboolean
 gtk_cifro_area_draw (GtkWidget *widget,
-                     cairo_t   *cairo,
-                     gpointer   data)
+                     cairo_t   *cairo)
 {
   GtkCifroArea *carea = GTK_CIFRO_AREA (widget);
   GtkCifroAreaPrivate *priv = carea->priv;
 
   gdouble cairo_width = priv->widget_width;
   gdouble cairo_height = priv->widget_height;
-  gdouble shift_width = ((priv->widget_width - priv->visible_width) / 2.0);
-  gdouble shift_height = ((priv->widget_height - priv->visible_height) / 2.0);
+  gdouble shift_width = (priv->widget_width - priv->visible_width) / 2.0;
+  gdouble shift_height = (priv->widget_height - priv->visible_height) / 2.0;
   gdouble angle = priv->angle;
+
+  if ((priv->clip_width == 0) || (priv->clip_height == 0))
+    return FALSE;
 
   if (priv->swap_x)
     angle = -angle;
@@ -780,7 +466,7 @@ gtk_cifro_area_draw (GtkWidget *widget,
     angle = -angle;
 
   /* Перерисовка видимой области. */
-  if (priv->visible_cairo)
+  if (priv->visible_cairo != NULL)
     {
       cairo_surface_t *surface = cairo_get_target (priv->visible_cairo);
       gpointer data = cairo_image_surface_get_data (surface);
@@ -788,21 +474,18 @@ gtk_cifro_area_draw (GtkWidget *widget,
       dsize *= cairo_image_surface_get_height (surface);
 
       /* Перед перерисовкой очищаем поверхность до прозрачного состояния
-         и выполняем перерисовку видимой области. */
+       * и выполняем перерисовку видимой области. */
       cairo_surface_flush (surface);
+
       memset (data, 0, dsize);
-      g_signal_emit (GTK_CIFRO_AREA (widget), gtk_cifro_area_signals[SIGNAL_VISIBLE_DRAW], 0, priv->visible_cairo);
+      g_signal_emit (GTK_CIFRO_AREA (widget), gtk_cifro_area_signals[SIGNAL_VISIBLE_DRAW],
+                     0, priv->visible_cairo);
+
       cairo_surface_mark_dirty (surface);
 
       cairo_save (cairo);
 
       cairo_set_operator (cairo, CAIRO_OPERATOR_OVER);
-
-      if (priv->clip)
-        {
-          cairo_rectangle (cairo, priv->clip_x, priv->clip_y, priv->clip_width, priv->clip_height);
-          cairo_clip (cairo);
-        }
 
       if (priv->swap_x)
         {
@@ -816,10 +499,14 @@ gtk_cifro_area_draw (GtkWidget *widget,
           cairo_translate (cairo, 0, -cairo_height);
         }
 
-      if (priv->angle != 0.0)
+      if (priv->rotate)
         {
+          cairo_rectangle (cairo, priv->border_left, priv->border_top, priv->clip_width, priv->clip_height);
+          cairo_clip (cairo);
+
           cairo_translate (cairo, cairo_width / 2.0, cairo_height / 2.0);
           cairo_rotate (cairo, angle);
+
           cairo_translate (cairo, -cairo_width / 2.0, -cairo_height / 2.0);
         }
 
@@ -834,18 +521,6 @@ gtk_cifro_area_draw (GtkWidget *widget,
   g_signal_emit (GTK_CIFRO_AREA (widget), gtk_cifro_area_signals[SIGNAL_AREA_DRAW], 0, cairo);
   cairo_restore (cairo);
 
-  /* Рисуем рамку фокуса. */
-#ifdef CIFRO_AREA_WITH_GTK2
-  if (priv->draw_focus && gtk_widget_is_focus (widget))
-    gtk_paint_focus (widget->style, widget->window, GTK_STATE_NORMAL, NULL, NULL, NULL,
-                     0, 0, widget->allocation.width, widget->allocation.height);
-#else
-  if (priv->draw_focus && gtk_widget_is_focus (widget))
-    gtk_render_focus (gtk_widget_get_style_context (widget), cairo, 0, 0,
-                      gtk_widget_get_allocated_width (widget),
-                      gtk_widget_get_allocated_height (widget));
-#endif
-
   return TRUE;
 }
 
@@ -854,11 +529,10 @@ gtk_cifro_area_draw (GtkWidget *widget,
 /* Обработчик рисования содержимого виджета GTK 2. */
 static gboolean
 gtk_cifro_area_expose (GtkWidget      *widget,
-                       GdkEventExpose *event,
-                       gpointer        data)
+                       GdkEventExpose *event)
 {
   cairo_t *cairo = gdk_cairo_create (widget->window);
-  gboolean status = gtk_cifro_area_draw (widget, cairo, NULL);
+  gboolean status = gtk_cifro_area_draw (widget, cairo);
 
   cairo_destroy (cairo);
 
@@ -867,101 +541,323 @@ gtk_cifro_area_expose (GtkWidget      *widget,
 
 #endif
 
-/* Функция создания объекта CifroArea. */
+/**
+ * gtk_cifro_area_new:
+ *
+ * Функция создаёт виджет #GtkCifroArea.
+ *
+ * Returns: #GtkCifroArea.
+ *
+ */
 GtkWidget *
 gtk_cifro_area_new (void)
 {
   return g_object_new (GTK_TYPE_CIFRO_AREA, NULL);
 }
 
-/* Функция устанавливает необходимости рисования рамки при наличии фокуса ввода в объект CifroArea. */
+/**
+ * gtk_cifro_area_get_rotate:
+ * @carea: указатель на #GtkCifroArea
+ *
+ * Функция возвращает значение параметра разрешения поворота изображения. Данная
+ * функция является виртуальной и может быть переопределена классом, наследуемым
+ * от #GtkCifroArea, для изменения поведения объекта.
+ *
+ * Returns: %TRUE если разрешено изменение угла поворота изображения.
+ *
+ */
+gboolean
+gtk_cifro_area_get_rotate (GtkCifroArea *carea)
+{
+  GtkCifroAreaClass *klass;
+
+  g_return_val_if_fail (GTK_IS_CIFRO_AREA (carea), FALSE);
+
+  klass = GTK_CIFRO_AREA_GET_CLASS (carea);
+
+  if (klass->get_rotate != NULL)
+    return klass->get_rotate (carea);
+
+  return TRUE;
+}
+
+/**
+ * gtk_cifro_area_get_swap:
+ * @carea: указатель на #GtkCifroArea
+ * @swap_x: (out) (allow-none): признак отражения относительно оси X или %NULL
+ * @swap_y: (out) (allow-none): признак отражения относительно оси Y или %NULL
+ *
+ * Функция возвращает параметры зеркального отражения изображения по осям. Данная функция
+ * является виртуальной и может быть переопределена классом, наследуемым от #GtkCifroArea,
+ * для изменения поведения объекта.
+ *
+ */
 void
-gtk_cifro_area_set_draw_focus (GtkCifroArea *carea,
-                               gboolean draw_focus)
+gtk_cifro_area_get_swap (GtkCifroArea *carea,
+                         gboolean     *swap_x,
+                         gboolean     *swap_y)
+{
+  GtkCifroAreaClass *klass;
+
+  g_return_if_fail (GTK_IS_CIFRO_AREA (carea));
+
+  klass = GTK_CIFRO_AREA_GET_CLASS (carea);
+
+  if (klass->get_swap != NULL)
+    {
+      klass->get_swap (carea, swap_x, swap_y);
+    }
+  else
+    {
+      (swap_x != NULL) ? *swap_x = FALSE : 0;
+      (swap_y != NULL) ? *swap_y = FALSE : 0;
+    }
+}
+
+/**
+ * gtk_cifro_area_get_stick:
+ * @carea: указатель на #GtkCifroArea
+ * @stick_x: (out) (allow-none): направление смещения по оси X или %NULL
+ * @stick_y: (out) (allow-none): направление смещения по оси Y или %NULL
+ *
+ * Функция возвращает направление, в котором будут смещаться координаты, если текущий
+ * масштаб требует отображения большего размера, чем установлено пределом перемещения
+ * (см. gtk_cifro_area_get_limits()). Данная функция является виртуальной и может быть
+ * переопределена классом, наследуемым от #GtkCifroArea, для изменения поведения объекта.
+ *
+ */
+void
+gtk_cifro_area_get_stick (GtkCifroArea          *carea,
+                          GtkCifroAreaStickType *stick_x,
+                          GtkCifroAreaStickType *stick_y)
+{
+  GtkCifroAreaClass *klass;
+
+  g_return_if_fail (GTK_IS_CIFRO_AREA (carea));
+
+  klass = GTK_CIFRO_AREA_GET_CLASS (carea);
+
+  if (klass->get_stick != NULL)
+    {
+      klass->get_stick (carea, stick_x, stick_y);
+    }
+  else
+    {
+      (stick_x != NULL) ? *stick_x = GTK_CIFRO_AREA_STICK_CENTER : 0;
+      (stick_y != NULL) ? *stick_y = GTK_CIFRO_AREA_STICK_CENTER : 0;
+    }
+}
+
+/**
+ * gtk_cifro_area_get_border:
+ * @carea: указатель на #GtkCifroArea
+ * @border_left: (out) (allow-none): размер окантовки с левой стороны или %NULL
+ * @border_right: (out) (allow-none): размер окантовки с правой стороны или %NULL
+ * @border_top: (out) (allow-none): размер окантовки сверху или %NULL
+ * @border_bottom: (out) (allow-none): размер окантовки снизу или %NULL
+ *
+ * Функция возвращает текущие размеры области окантовки виджета. Данная функция является
+ * виртуальной и может быть переопределена классом, наследуемым от #GtkCifroArea, для
+ * изменения поведения объекта.
+ *
+ */
+void
+gtk_cifro_area_get_border (GtkCifroArea *carea,
+                           guint        *border_top,
+                           guint        *border_bottom,
+                           guint        *border_left,
+                           guint        *border_right)
+{
+  GtkCifroAreaClass *klass;
+
+  g_return_if_fail (GTK_IS_CIFRO_AREA (carea));
+
+  klass = GTK_CIFRO_AREA_GET_CLASS (carea);
+
+  if (klass->get_border != NULL)
+    {
+      klass->get_border (carea, border_top, border_bottom, border_left, border_right);
+    }
+  else
+    {
+      (border_top != NULL) ? *border_top = 0 : 0;
+      (border_bottom != NULL) ? *border_bottom = 0 : 0;
+      (border_left != NULL) ? *border_left = 0 : 0;
+      (border_right != NULL) ? *border_right = 0 : 0;
+    }
+}
+
+/**
+ * gtk_cifro_area_get_limits:
+ * @carea: указатель на #GtkCifroArea
+ * @min_x: (out) (allow-none): минимально возможное значение по оси X или %NULL
+ * @max_x: (out) (allow-none): максимально возможное значение по оси X или %NULL
+ * @min_y: (out) (allow-none): минимально возможное значение по оси Y или %NULL
+ * @max_y: (out) (allow-none): максимально возможное значение по оси Y или %NULL
+ *
+ * Функция возвращает текущие значения пределов перемещения изображения. Данная функция
+ * является виртуальной и может быть переопределена классом, наследуемым от #GtkCifroArea,
+ * для изменения поведения объекта.
+ *
+ */
+void
+gtk_cifro_area_get_limits (GtkCifroArea *carea,
+                           gdouble      *min_x,
+                           gdouble      *max_x,
+                           gdouble      *min_y,
+                           gdouble      *max_y)
+{
+  GtkCifroAreaClass *klass;
+
+  g_return_if_fail (GTK_IS_CIFRO_AREA (carea));
+
+  klass = GTK_CIFRO_AREA_GET_CLASS (carea);
+
+  if (klass->get_limits != NULL)
+    {
+      klass->get_limits (carea, min_x, max_x, min_y, max_y);
+    }
+  else
+    {
+      (min_x != NULL) ? *min_x = -G_MAXDOUBLE : 0;
+      (max_x != NULL) ? *max_x = +G_MAXDOUBLE : 0;
+      (min_y != NULL) ? *min_y = -G_MAXDOUBLE : 0;
+      (max_y != NULL) ? *max_y = +G_MAXDOUBLE : 0;
+    }
+}
+
+/**
+ * gtk_cifro_area_check_scale:
+ * @carea: указатель на #GtkCifroArea
+ * @scale_x: (out): значение масштаба по оси X
+ * @scale_y: (out): значение масштаба по оси Y
+ *
+ * Функция используется для проверки устанавливаемых масштабов, на предмет допустимости.
+ * Значения масштабов передаются в функцию, которая при необходимости может их изменить
+ * на допустимые. Данная функция обычно используется только внутри класса #GtkCifroArea
+ * и мало применима для обычных пользователей. Данная функция является виртуальной и может
+ * быть переопределена классом, наследуемым от #GtkCifroArea, для изменения поведения объекта.
+ *
+ */
+void
+gtk_cifro_area_check_scale (GtkCifroArea *carea,
+                            gdouble      *scale_x,
+                            gdouble      *scale_y)
+{
+  GtkCifroAreaClass *klass;
+
+  g_return_if_fail (GTK_IS_CIFRO_AREA (carea));
+
+  klass = GTK_CIFRO_AREA_GET_CLASS (carea);
+
+  if (klass->check_scale != NULL)
+    klass->check_scale (carea, scale_x, scale_y);
+}
+
+/**
+ * gtk_cifro_area_set_scale_on_resize:
+ * @carea: указатель на #GtkCifroArea
+ * @scale_on_resize: признак изменения масштаба при изменении размеров виджета
+ *
+ * Функция задаёт поведение масштаба при изменении размеров виджета. При изменении размеров
+ * виджета возможно изменение коэффициента масштабирования (@scale_on_resize = %TRUE)
+ * или изменение видимой области изображения (@scale_on_resize = %FALSE).
+ *
+ */
+void
+gtk_cifro_area_set_scale_on_resize (GtkCifroArea *carea,
+                                    gboolean      scale_on_resize)
 {
   g_return_if_fail (GTK_IS_CIFRO_AREA (carea));
 
-  carea->priv->draw_focus = draw_focus;
+  carea->priv->scale_on_resize = scale_on_resize;
 }
 
-/* Функция возвращает необходимости рисования рамки при наличии фокуса ввода в объект CifroArea. */
+/**
+ * gtk_cifro_area_get_scale_on_resize:
+ * @carea: указатель на #GtkCifroArea
+ *
+ * Функция возвращает текущее поведение масштаба при изменении размеров виджета.
+ *
+ * Returns: TRUE если при изменении размеров виджета изменяется масштаб.
+ *
+ */
 gboolean
-gtk_cifro_area_get_draw_focus (GtkCifroArea *carea)
+gtk_cifro_area_get_scale_on_resize (GtkCifroArea *carea)
 {
   g_return_val_if_fail (GTK_IS_CIFRO_AREA (carea), FALSE);
 
-  return carea->priv->draw_focus;
+  return carea->priv->scale_on_resize;
 }
 
-/* Функция задает курсор используемый при нахождении мышки в видимой области. */
+/**
+ * gtk_cifro_area_set_scale:
+ * @carea: указатель на #GtkCifroArea
+ * @scale_x: масштаб по оси X
+ * @scale_y: масштаб по оси Y
+ * @center_x: центр изменения масштаба по оси X
+ * @center_y: центр изменения масштаба по оси Y
+ *
+ * Функция задаёт масштабы отображения. Перед установкой масштабы проверяются с помощью
+ * функции gtk_cifro_area_check_scale(). Масштабирование производится относительно центра
+ * изображения, определённого параметрами @center_x и @center_y.
+ *
+ */
 void
-gtk_cifro_area_set_point_cursor (GtkCifroArea *carea,
-                                 GdkCursor    *cursor)
-{
-  g_return_if_fail (GTK_IS_CIFRO_AREA (carea));
-
-#ifdef CIFRO_AREA_WITH_GTK2
-  g_clear_pointer (&carea->priv->point_cursor, gdk_cursor_unref);
-#else
-  g_clear_object (&carea->priv->point_cursor);
-#endif
-
-  carea->priv->point_cursor = cursor;
-}
-
-/* Функция задает курсор используемый при перемещении видимой области. */
-void
-gtk_cifro_area_set_move_cursor (GtkCifroArea *carea,
-                                GdkCursor    *cursor)
-{
-  g_return_if_fail (GTK_IS_CIFRO_AREA (carea));
-
-#ifdef CIFRO_AREA_WITH_GTK2
-  g_clear_pointer (&carea->priv->move_cursor, gdk_cursor_unref);
-#else
-  g_clear_object (&carea->priv->move_cursor);
-#endif
-
-  carea->priv->move_cursor = cursor;
-}
-
-/* Функция возвращает текущие значения размеров виджета. */
-void
-gtk_cifro_area_get_size (GtkCifroArea *carea,
-                         gint         *width,
-                         gint         *height)
+gtk_cifro_area_set_scale (GtkCifroArea *carea,
+                          gdouble       scale_x,
+                          gdouble       scale_y,
+                          gdouble       center_x,
+                          gdouble       center_y)
 {
   GtkCifroAreaPrivate *priv;
+  gdouble view_x1, view_x2;
+  gdouble view_y1, view_y2;
 
   g_return_if_fail (GTK_IS_CIFRO_AREA (carea));
+
+  gtk_cifro_area_check_scale (carea, &scale_x, &scale_y);
 
   priv = carea->priv;
 
-  if (width != NULL)
-    *width = priv->widget_width;
-  if (height != NULL)
-    *height = priv->widget_height;
+  center_x = CLAMP (center_x, priv->from_x, priv->to_x);
+  center_y = CLAMP (center_y, priv->from_y, priv->to_y);
+
+  /* Расстояния от центра масштабирования до границ отображения. */
+  view_x1 = (center_x - priv->from_x) / priv->scale_x;
+  view_x2 = (priv->to_x - center_x) / priv->scale_x;
+  view_y1 = (center_y - priv->from_y) / priv->scale_y;
+  view_y2 = (priv->to_y - center_y) / priv->scale_y;
+
+  priv->scale_x = scale_x;
+  priv->scale_y = scale_y;
+
+  /* Новые расстояния от центра до границ отображения. */
+  view_x1 *= priv->scale_x;
+  view_x2 *= priv->scale_x;
+  view_y1 *= priv->scale_y;
+  view_y2 *= priv->scale_y;
+
+  /* Новые границы отображения. */
+  priv->from_x = center_x - view_x1;
+  priv->to_x = center_x + view_x2;
+  priv->from_y = center_y - view_y1;
+  priv->to_y = center_y + view_y2;
+
+  gtk_cifro_area_update_visible (carea, FALSE);
+
+  gtk_widget_queue_draw (GTK_WIDGET (carea));
 }
 
-/* Функция возвращает текущие значения размеров видимой области. */
-void
-gtk_cifro_area_get_visible_size (GtkCifroArea *carea,
-                                 gint         *width,
-                                 gint         *height)
-{
-  GtkCifroAreaPrivate *priv;
-
-  g_return_if_fail (GTK_IS_CIFRO_AREA (carea));
-
-  priv = carea->priv;
-
-  if (width != NULL)
-    *width = priv->visible_width;
-  if (height != NULL)
-    *height = priv->visible_height;
-}
-
-/* Функция возвращает текущие значения размеров видимой области. */
+/**
+ * gtk_cifro_area_get_scale:
+ * @carea: указатель на #GtkCifroArea
+ * @scale_x: (out) (allow-none): масштаб по оси X
+ * @scale_y: (out) (allow-none): масштаб по оси Y
+ *
+ * Функция возвращает значения текущих масштабов отображения.
+ *
+ */
 void
 gtk_cifro_area_get_scale (GtkCifroArea *carea,
                           gdouble      *scale_x,
@@ -973,449 +869,22 @@ gtk_cifro_area_get_scale (GtkCifroArea *carea,
 
   priv = carea->priv;
 
-  if (scale_x != NULL)
-    *scale_x = priv->cur_scale_x;
-  if (scale_y != NULL)
-    *scale_y = priv->cur_scale_y;
+  (scale_x != NULL) ? *scale_x = priv->scale_x : 0;
+  (scale_y != NULL) ? *scale_y = priv->scale_y : 0;
 }
 
-/* Функция задаёт отражение по осям. */
+/**
+ * gtk_cifro_area_set_view:
+ * @carea: указатель на #GtkCifroArea
+ * @from_x: минимальная граница изображения по оси X
+ * @to_x: минимальная граница изображения по оси X
+ * @from_y: минимальная граница изображения по оси Y
+ * @to_y: минимальная граница изображения по оси Y
+ *
+ * Функция задаёт границы текущей видимости изображения.
+ *
+ */
 void
-gtk_cifro_area_set_swap (GtkCifroArea *carea,
-                         gboolean      swap_x,
-                         gboolean      swap_y)
-{
-  GtkCifroAreaPrivate *priv;
-
-  g_return_if_fail (GTK_IS_CIFRO_AREA (carea));
-
-  priv = carea->priv;
-
-  priv->swap_x = swap_x;
-  priv->swap_y = swap_y;
-
-  gtk_cifro_area_update_visible (priv);
-}
-
-/* Функция возвращает текущее состояние отражения по осям. */
-void
-gtk_cifro_area_get_swap (GtkCifroArea *carea,
-                         gboolean     *swap_x,
-                         gboolean     *swap_y)
-{
-  g_return_if_fail (GTK_IS_CIFRO_AREA (carea));
-
-  if (swap_x != NULL)
-    *swap_x = carea->priv->swap_x;
-  if (swap_y != NULL)
-    *swap_y = carea->priv->swap_y;
-}
-
-/* Функция задаёт размер области для отрисовки элементов обрамления по периметру. */
-gboolean
-gtk_cifro_area_set_border (GtkCifroArea *carea,
-                           gint          left,
-                           gint          right,
-                           gint          top,
-                           gint          bottom)
-{
-  GtkCifroAreaPrivate *priv;
-
-  g_return_val_if_fail (GTK_IS_CIFRO_AREA (carea), FALSE);
-
-  g_return_val_if_fail (left >= 0 && left < 1024, FALSE);
-  g_return_val_if_fail (right >= 0 && right < 1024, FALSE);
-  g_return_val_if_fail (top >= 0 && top < 1024, FALSE);
-  g_return_val_if_fail (bottom >= 0 && bottom < 1024, FALSE);
-
-  priv = carea->priv;
-
-  priv->border_left = left;
-  priv->border_right = right;
-  priv->border_top = top;
-  priv->border_bottom = bottom;
-
-  gtk_cifro_area_update_visible (priv);
-
-  return TRUE;
-}
-
-/* Функция возвращает текущий размер области для отрисовки элементов обрамления по периметру. */
-void
-gtk_cifro_area_get_border (GtkCifroArea *carea,
-                           gint         *left,
-                           gint         *right,
-                           gint         *top,
-                           gint         *bottom)
-{
-  GtkCifroAreaPrivate *priv;
-
-  g_return_if_fail (GTK_IS_CIFRO_AREA (carea));
-
-  priv = carea->priv;
-
-  if (left != NULL)
-    *left = priv->border_left;
-  if (right != NULL)
-    *right = priv->border_right;
-  if (top != NULL)
-    *top = priv->border_top;
-  if (bottom != NULL)
-    *bottom = priv->border_bottom;
-}
-
-/* Функция определяет: изменять масштаб при изменении размеров окна или изменять видимую область. */
-void
-gtk_cifro_area_set_scale_on_resize (GtkCifroArea *carea,
-                                    gboolean      scale_on_resize)
-{
-  g_return_if_fail (GTK_IS_CIFRO_AREA (carea));
-
-  carea->priv->scale_on_resize = scale_on_resize;
-}
-
-/* Функция возвращает состояние поведения масштабирования при изменении размеров окна. */
-gboolean
-gtk_cifro_area_get_scale_on_resize (GtkCifroArea *carea)
-{
-  g_return_val_if_fail (GTK_IS_CIFRO_AREA (carea), FALSE);
-
-  return carea->priv->scale_on_resize;
-}
-
-/* Функция задаёт режим масштабирования: по центру или по курсору. */
-void
-gtk_cifro_area_set_zoom_on_center (GtkCifroArea *carea,
-                                   gboolean      zoom_on_center)
-{
-  g_return_if_fail (GTK_IS_CIFRO_AREA (carea));
-
-  carea->priv->zoom_on_center = zoom_on_center;
-}
-
-/* Функция возвращает текущий режим масштабирования. */
-gboolean
-gtk_cifro_area_get_zoom_on_center (GtkCifroArea *carea)
-{
-  g_return_val_if_fail (GTK_IS_CIFRO_AREA (carea), FALSE);
-
-  return carea->priv->zoom_on_center;
-}
-
-/* Функция задаёт соотношение масштабов по осям при изменении размеров. */
-gboolean
-gtk_cifro_area_set_scale_aspect (GtkCifroArea *carea,
-                                 gdouble       scale_aspect)
-{
-  GtkCifroAreaPrivate *priv;
-  gboolean status;
-
-  g_return_val_if_fail (GTK_IS_CIFRO_AREA (carea), FALSE);
-
-  priv = carea->priv;
-
-  status = gtk_cifro_area_fix_scale_aspect (scale_aspect,
-                                            &priv->min_scale_x, &priv->max_scale_x,
-                                            &priv->min_scale_y, &priv->max_scale_y);
-  g_return_val_if_fail (status, FALSE);
-
-  priv->scale_aspect = scale_aspect;
-
-  gtk_cifro_area_update_visible (priv);
-
-  return TRUE;
-}
-
-/* Функция возвращает текущее соотношение масштабов по осям при изменении размеров. */
-gdouble
-gtk_cifro_area_get_scale_aspect (GtkCifroArea *carea)
-{
-  g_return_val_if_fail (GTK_IS_CIFRO_AREA (carea), 0.0);
-
-  return carea->priv->scale_aspect;
-}
-
-/* Функция задаёт значение умножителя скорости перемещения при нажатой клавише control. */
-gboolean
-gtk_cifro_area_set_move_multiplier (GtkCifroArea *carea,
-                                    gdouble       move_multiplier)
-{
-  g_return_val_if_fail (GTK_IS_CIFRO_AREA (carea), FALSE);
-
-  g_return_val_if_fail (move_multiplier > 0.0, FALSE);
-
-  carea->priv->move_multiplier = move_multiplier;
-
-  return TRUE;
-}
-
-/* Функция возвращает текущее значение умножителя скорости перемещения при нажатой клавише control. */
-gdouble
-gtk_cifro_area_get_move_multiplier (GtkCifroArea *carea)
-{
-  g_return_val_if_fail (GTK_IS_CIFRO_AREA (carea), 0.0);
-
-  return carea->priv->move_multiplier;
-}
-
-/* Функция задаёт значение умножителя скорости вращения при нажатой клавише control. */
-gboolean
-gtk_cifro_area_set_rotate_multiplier (GtkCifroArea *carea,
-                                      gdouble       rotate_multiplier)
-{
-  g_return_val_if_fail (GTK_IS_CIFRO_AREA (carea), FALSE);
-
-  g_return_val_if_fail (rotate_multiplier > 0.0, FALSE);
-
-  carea->priv->rotate_multiplier = rotate_multiplier;
-
-  return TRUE;
-}
-
-/* Функция возвращает текущее значение умножителя скорости вращения при нажатой клавише control. */
-gdouble
-gtk_cifro_area_get_rotate_multiplier (GtkCifroArea *carea)
-{
-  g_return_val_if_fail (GTK_IS_CIFRO_AREA (carea), 0.0);
-
-  return carea->priv->rotate_multiplier;
-}
-
-/* Функция задаёт возможность поворота изображения вокруг оси. */
-void
-gtk_cifro_area_set_rotation (GtkCifroArea *carea,
-                             gboolean      rotation)
-{
-  g_return_if_fail (GTK_IS_CIFRO_AREA (carea));
-
-  carea->priv->rotation = rotation;
-}
-
-/* Функция возвращает информацию о возможности поворота изображения вокруг оси. */
-gboolean
-gtk_cifro_area_get_rotation (GtkCifroArea *carea)
-{
-  g_return_val_if_fail (GTK_IS_CIFRO_AREA (carea), FALSE);
-
-  return carea->priv->rotation;
-}
-
-/* Функция задаёт пределы возможных отображаемых значений. */
-gboolean
-gtk_cifro_area_set_view_limits (GtkCifroArea *carea,
-                                gdouble       min_x,
-                                gdouble       max_x,
-                                gdouble       min_y,
-                                gdouble       max_y)
-{
-  GtkCifroAreaPrivate *priv;
-
-  g_return_val_if_fail (GTK_IS_CIFRO_AREA (carea), FALSE);
-
-  g_return_val_if_fail (min_x < max_x, FALSE);
-  g_return_val_if_fail (min_y < max_y, FALSE);
-
-  priv = carea->priv;
-
-  priv->min_x = min_x;
-  priv->max_x = max_x;
-  priv->min_y = min_y;
-  priv->max_y = max_y;
-
-  gtk_cifro_area_update_visible (priv);
-  gtk_widget_queue_draw (GTK_WIDGET (carea));
-
-  return TRUE;
-}
-
-/* Функция возвращает пределы возможных отображаемых значений. */
-void
-gtk_cifro_area_get_view_limits (GtkCifroArea *carea,
-                                gdouble      *min_x,
-                                gdouble      *max_x,
-                                gdouble      *min_y,
-                                gdouble      *max_y)
-{
-  GtkCifroAreaPrivate *priv;
-
-  g_return_if_fail (GTK_IS_CIFRO_AREA (carea));
-
-  priv = carea->priv;
-
-  if (min_x != NULL)
-    *min_x = priv->min_x;
-  if (max_x != NULL)
-    *max_x = priv->max_x;
-  if (min_y != NULL)
-    *min_y = priv->min_y;
-  if (max_y != NULL)
-    *max_y = priv->max_y;
-}
-
-/* Функция задаёт пределы возможных коэффициентов масштабирования. */
-gboolean
-gtk_cifro_area_set_scale_limits (GtkCifroArea *carea,
-                                 gdouble       min_scale_x,
-                                 gdouble       max_scale_x,
-                                 gdouble       min_scale_y,
-                                 gdouble       max_scale_y)
-{
-  GtkCifroAreaPrivate *priv;
-  gboolean status;
-
-  g_return_val_if_fail (GTK_IS_CIFRO_AREA (carea), FALSE);
-
-  priv = carea->priv;
-
-  status = gtk_cifro_area_fix_scale_aspect (priv->scale_aspect,
-                                            &min_scale_x, &max_scale_x,
-                                            &min_scale_y, &max_scale_y);
-  g_return_val_if_fail (status, FALSE);
-
-  priv->min_scale_x = min_scale_x;
-  priv->max_scale_x = max_scale_x;
-  priv->min_scale_y = min_scale_y;
-  priv->max_scale_y = max_scale_y;
-
-  gtk_cifro_area_update_visible (priv);
-  gtk_widget_queue_draw (GTK_WIDGET (carea));
-
-  return TRUE;
-}
-
-/* Функция возвращает пределы возможных коэффициентов масштабирования. */
-void
-gtk_cifro_area_get_scale_limits (GtkCifroArea *carea,
-                                 gdouble      *min_scale_x,
-                                 gdouble      *max_scale_x,
-                                 gdouble      *min_scale_y,
-                                 gdouble      *max_scale_y)
-{
-  GtkCifroAreaPrivate *priv;
-
-  g_return_if_fail (GTK_IS_CIFRO_AREA (carea));
-
-  priv = carea->priv;
-
-  if (min_scale_x != NULL)
-    *min_scale_x = priv->min_scale_x;
-  if (max_scale_x != NULL)
-    *max_scale_x = priv->max_scale_x;
-  if (min_scale_y != NULL)
-    *min_scale_y = priv->min_scale_y;
-  if (max_scale_y != NULL)
-    *max_scale_y = priv->max_scale_y;
-}
-
-/* Функция устанавливает параметры масштабирования. */
-gboolean
-gtk_cifro_area_set_zoom_scale (GtkCifroArea *carea,
-                               gdouble       zoom_scale)
-{
-  g_return_val_if_fail (GTK_IS_CIFRO_AREA (carea), FALSE);
-
-  g_return_val_if_fail (zoom_scale > 0.0, FALSE);
-
-  carea->priv->zoom_scale = zoom_scale;
-
-  return TRUE;
-}
-
-/* Функция возвращает параметры масштабирования. */
-gdouble
-gtk_cifro_area_get_zoom_scale (GtkCifroArea *carea)
-{
-  g_return_val_if_fail (GTK_IS_CIFRO_AREA (carea), 0.0);
-
-  return carea->priv->zoom_scale;
-}
-
-/* Функция задаёт набор фиксированных значений масштабов. */
-gboolean
-gtk_cifro_area_set_fixed_zoom_scales (GtkCifroArea *carea,
-                                      gdouble      *zoom_x_scales,
-                                      gdouble      *zoom_y_scales,
-                                      gint          num_scales)
-{
-  GtkCifroAreaPrivate *priv;
-  gint i;
-
-  g_return_val_if_fail (GTK_IS_CIFRO_AREA (carea), FALSE);
-
-  priv = carea->priv;
-
-  if (num_scales == 0)
-    {
-      g_free (priv->zoom_x_scales);
-      g_free (priv->zoom_y_scales);
-      priv->zoom_x_scales = NULL;
-      priv->zoom_y_scales = NULL;
-      priv->num_scales = 0;
-      return TRUE;
-    }
-
-  for (i = 0; i < num_scales; i++)
-    {
-      g_return_val_if_fail (zoom_x_scales[ i ] > 0.0, FALSE);
-      g_return_val_if_fail (zoom_y_scales[ i ] > 0.0, FALSE);
-    }
-
-  g_free (priv->zoom_x_scales);
-  g_free (priv->zoom_y_scales);
-
-  priv->zoom_x_scales = g_malloc (sizeof(gdouble) * num_scales);
-  priv->zoom_y_scales = g_malloc (sizeof(gdouble) * num_scales);
-
-  memcpy (priv->zoom_x_scales, zoom_x_scales, sizeof(gdouble) * num_scales);
-  memcpy (priv->zoom_y_scales, zoom_y_scales, sizeof(gdouble) * num_scales);
-  priv->num_scales = num_scales;
-
-  gtk_cifro_area_set_view (carea, priv->from_x, priv->to_x, priv->from_y, priv->to_y);
-
-  return TRUE;
-}
-
-/* Функция возвращает текущий набор фиксированых значений масштабов. */
-void
-gtk_cifro_area_get_fixed_zoom_scales (GtkCifroArea  *carea,
-                                      gdouble      **zoom_x_scales,
-                                      gdouble      **zoom_y_scales,
-                                      gint          *num_scales)
-{
-  GtkCifroAreaPrivate *priv;
-
-  g_return_if_fail (GTK_IS_CIFRO_AREA (carea));
-
-  priv = carea->priv;
-
-  if (priv->num_scales)
-    {
-      if (zoom_x_scales != NULL)
-        {
-          *zoom_x_scales = g_malloc (sizeof(gdouble) * priv->num_scales);
-          memcpy (*zoom_x_scales, priv->zoom_x_scales, sizeof(gdouble) * priv->num_scales);
-        }
-
-      if (zoom_y_scales != NULL)
-        {
-          *zoom_y_scales = g_malloc (sizeof(gdouble) * priv->num_scales);
-          memcpy (*zoom_y_scales, priv->zoom_y_scales, sizeof(gdouble) * priv->num_scales);
-        }
-    }
-  else
-    {
-      if (zoom_x_scales != NULL)
-        *zoom_x_scales = NULL;
-      if (zoom_y_scales != NULL)
-        *zoom_y_scales = NULL;
-    }
-
-  if (num_scales != NULL)
-    *num_scales = priv->num_scales;
-}
-
-/* Функция задаёт границу текущей видимости. */
-gboolean
 gtk_cifro_area_set_view (GtkCifroArea *carea,
                          gdouble       from_x,
                          gdouble       to_x,
@@ -1424,79 +893,34 @@ gtk_cifro_area_set_view (GtkCifroArea *carea,
 {
   GtkCifroAreaPrivate *priv;
 
-  g_return_val_if_fail (GTK_IS_CIFRO_AREA (carea), FALSE);
+  g_return_if_fail (GTK_IS_CIFRO_AREA (carea));
 
-  g_return_val_if_fail (from_x < to_x, FALSE);
-  g_return_val_if_fail (from_y < to_y, FALSE);
+  g_return_if_fail (from_x < to_x);
+  g_return_if_fail (from_y < to_y);
 
   priv = carea->priv;
-
-  if (from_x < priv->min_x)
-    from_x = priv->min_x;
-  if (to_x > priv->max_x)
-    to_x = priv->max_x;
-
-  if (from_y < priv->min_y)
-    from_y = priv->min_y;
-  if (to_y > priv->max_y)
-    to_y = priv->max_y;
 
   priv->from_x = from_x;
   priv->to_x = to_x;
   priv->from_y = from_y;
   priv->to_y = to_y;
 
-  if (priv->num_scales == 0)
-    {
-      priv->cur_scale_x = 0.0;
-      priv->cur_scale_y = 0.0;
-    }
-  else
-    {
-      gdouble opt_scale_x;
-      gdouble opt_scale_y;
-      gdouble scale_diff;
-      gdouble min_scale_diff;
-      gint i, opt_i;
+  gtk_cifro_area_update_visible (carea, TRUE);
 
-      if (priv->widget_width && priv->widget_height)
-        {
-          opt_scale_x = (priv->to_x - priv->from_x)
-                        / gtk_cifro_area_get_visible_width (priv->widget_width, priv->widget_height, priv->angle);
-          opt_scale_y = (priv->to_y - priv->from_y)
-                        / gtk_cifro_area_get_visible_height (priv->widget_width, priv->widget_height, priv->angle);
-        }
-      else
-        {
-          opt_scale_x = 1.0;
-          opt_scale_y = 1.0;
-        }
-
-      min_scale_diff = fabs (priv->zoom_x_scales[0] - opt_scale_x) + fabs (priv->zoom_y_scales[0] - opt_scale_y);
-      opt_i = 0;
-
-      for (i = 1; i < priv->num_scales; i++)
-        {
-          scale_diff = fabs (priv->zoom_x_scales[i] - opt_scale_x) + fabs (priv->zoom_y_scales[i] - opt_scale_y);
-          if (scale_diff < min_scale_diff)
-            {
-              min_scale_diff = scale_diff;
-              opt_i = i;
-            }
-        }
-
-      priv->cur_scale_x = priv->zoom_x_scales[opt_i];
-      priv->cur_scale_y = priv->zoom_y_scales[opt_i];
-      priv->cur_zoom_index = opt_i;
-    }
-
-  gtk_cifro_area_update_visible (priv);
   gtk_widget_queue_draw (GTK_WIDGET (carea));
-
-  return TRUE;
 }
 
-/* Функция возвращает границу текущей видимости. */
+/**
+ * gtk_cifro_area_get_view:
+ * @carea: указатель на #GtkCifroArea
+ * @from_x: (out) (allow-none): минимальная граница изображения по оси X
+ * @to_x: (out) (allow-none): минимальная граница изображения по оси X
+ * @from_y: (out) (allow-none): минимальная граница изображения по оси Y
+ * @to_y: (out) (allow-none): минимальная граница изображения по оси Y
+ *
+ * Функция возвращает границы текущей видимости изображения.
+ *
+ */
 void
 gtk_cifro_area_get_view (GtkCifroArea *carea,
                          gdouble      *from_x,
@@ -1510,17 +934,20 @@ gtk_cifro_area_get_view (GtkCifroArea *carea,
 
   priv = carea->priv;
 
-  if (from_x != NULL)
-    *from_x = priv->from_x;
-  if (to_x != NULL)
-    *to_x = priv->to_x;
-  if (from_y != NULL)
-    *from_y = priv->from_y;
-  if (to_y != NULL)
-    *to_y = priv->to_y;
+  (from_x != NULL) ? *from_x = priv->from_x : 0;
+  (to_x != NULL) ? *to_x = priv->to_x : 0;
+  (from_y != NULL) ? *from_y = priv->from_y : 0;
+  (to_y != NULL) ? *to_y = priv->to_y : 0;
 }
 
-/* Функция задаёт угол поворота изображения в радианах. */
+/**
+ * gtk_cifro_area_set_angle:
+ * @carea: указатель на #GtkCifroArea
+ * @angle: угол поворота изображения в радианах
+ *
+ * Функция задаёт угол поворота изображения.
+ *
+ */
 void
 gtk_cifro_area_set_angle (GtkCifroArea *carea,
                           gdouble       angle)
@@ -1531,22 +958,36 @@ gtk_cifro_area_set_angle (GtkCifroArea *carea,
 
   priv = carea->priv;
 
-  if (priv->rotation)
+  if (!priv->rotate)
+    return;
+
+  angle = fmodf (angle, 2.0 * G_PI);
+  if (angle > G_PI)
+    angle = angle - 2.0 * G_PI;
+  if (angle < -G_PI)
+    angle = angle + 2.0 * G_PI;
+
+  priv->angle = angle;
+  priv->angle_cos = cos (priv->angle);
+  priv->angle_sin = sin (priv->angle);
+
+  if (priv->rotate)
     {
-      angle = fmodf (angle, 2.0 * G_PI);
-      if (angle > G_PI)
-        angle = angle - 2.0 * G_PI;
-      if (angle < -G_PI)
-        angle = angle + 2.0 * G_PI;
-      priv->angle = angle;
-      priv->angle_cos = cos (priv->angle);
-      priv->angle_sin = sin (priv->angle);
-      gtk_cifro_area_update_visible (priv);
+      gtk_cifro_area_update_visible (carea, FALSE);
+
       gtk_widget_queue_draw (GTK_WIDGET (carea));
     }
 }
 
-/* Функция возвращает текущий угол поворота изображения в радианах. */
+/**
+ * gtk_cifro_area_get_angle:
+ * @carea: указатель на #GtkCifroArea
+ *
+ * Функция возвращает текущее значение угола поворота изображения.
+ *
+ * Returns: угол текущего поворота изображения в радианах.
+ *
+ */
 gdouble
 gtk_cifro_area_get_angle (GtkCifroArea *carea)
 {
@@ -1555,11 +996,19 @@ gtk_cifro_area_get_angle (GtkCifroArea *carea)
   return carea->priv->angle;
 }
 
-/* Функция смещает видимую область на x_step, y_step. */
+/**
+ * gtk_cifro_area_move:
+ * @carea: указатель на #GtkCifroArea
+ * @step_x: шаг перемещения по оси X, точки экрана
+ * @step_y: шаг перемещения по оси Y, точки экрана
+ *
+ * Функция смещает изображение на определенный шаг.
+ *
+ */
 void
 gtk_cifro_area_move (GtkCifroArea *carea,
-                     gdouble       step_x,
-                     gdouble       step_y)
+                     gint          step_x,
+                     gint          step_y)
 {
   GtkCifroAreaPrivate *priv;
   gdouble shift_x, shift_y;
@@ -1571,46 +1020,33 @@ gtk_cifro_area_move (GtkCifroArea *carea,
   shift_x = step_x * priv->angle_cos - step_y * priv->angle_sin;
   shift_y = step_y * priv->angle_cos + step_x * priv->angle_sin;
 
-  shift_x *= priv->cur_scale_x;
-  shift_y *= priv->cur_scale_y;
+  shift_x *= priv->scale_x;
+  shift_y *= priv->scale_y;
 
   if (priv->swap_x)
     shift_x = -shift_x;
   if (priv->swap_y)
     shift_y = -shift_y;
 
-  if (shift_x < 0)
-    {
-      if (priv->from_x + shift_x < priv->min_x)
-        shift_x = priv->min_x - priv->from_x;
-    }
-  else
-    {
-      if (priv->to_x + shift_x > priv->max_x)
-        shift_x = priv->max_x - priv->to_x;
-    }
-
-  if (shift_y < 0)
-    {
-      if (priv->from_y + shift_y < priv->min_y)
-        shift_y = priv->min_y - priv->from_y;
-    }
-  else
-    {
-      if (priv->to_y + shift_y > priv->max_y)
-        shift_y = priv->max_y - priv->to_y;
-    }
-
   priv->from_x += shift_x;
   priv->to_x += shift_x;
   priv->from_y += shift_y;
   priv->to_y += shift_y;
 
-  gtk_cifro_area_update_visible (priv);
+  gtk_cifro_area_update_visible (carea, FALSE);
+
   gtk_widget_queue_draw (GTK_WIDGET (carea));
 }
 
-/* Функция поворачивает видимую область на угол angle. */
+/**
+ * gtk_cifro_area_rotate:
+ * @carea: указатель на #GtkCifroArea
+ * @angle: угол поворота изображения, радианы
+ *
+ * Функция поворачивает изображение на определенный угол. Угол добавляется к
+ * текущему углу на который повернуто изображение.
+ *
+ */
 void
 gtk_cifro_area_rotate (GtkCifroArea *carea,
                        gdouble       angle)
@@ -1622,135 +1058,114 @@ gtk_cifro_area_rotate (GtkCifroArea *carea,
   gtk_cifro_area_set_angle (carea, angle);
 }
 
-/* Функция масштабирования видимой области. */
+/**
+ * gtk_cifro_area_zoom:
+ * @carea: указатель на #GtkCifroArea
+ * @direction_x: направление масштабирования по оси X
+ * @direction_y: направление масштабирования по оси Y
+ * @center_x: центр масштабирования по оси X, логические единицы
+ * @center_y: центр масштабирования по оси Y, логические единицы
+ *
+ * Функция изменяет текущий масштаб изображения.
+ *
+ */
 void
-gtk_cifro_area_zoom (GtkCifroArea *carea,
-                     gboolean      zoom_x,
-                     gboolean      zoom_y,
-                     gdouble       center_val_x,
-                     gdouble       center_val_y,
-                     gboolean      zoom_in,
-                     gdouble       zoom_scale)
+gtk_cifro_area_zoom (GtkCifroArea         *carea,
+                     GtkCifroAreaZoomType  direction_x,
+                     GtkCifroAreaZoomType  direction_y,
+                     gdouble               center_x,
+                     gdouble               center_y)
 {
+  GtkCifroAreaClass *klass;
   GtkCifroAreaPrivate *priv;
-
-  gdouble new_scale_x;
-  gdouble new_scale_y;
-
-  gdouble from_x, to_x;
-  gdouble from_y, to_y;
 
   g_return_if_fail (GTK_IS_CIFRO_AREA (carea));
 
+  klass = GTK_CIFRO_AREA_GET_CLASS (carea);
   priv = carea->priv;
 
-  from_x = priv->from_x;
-  to_x = priv->to_x;
-  from_y = priv->from_y;
-  to_y = priv->to_y;
-
-  zoom_scale = 1.0 + (priv->zoom_scale / 100.0);
-  if (!zoom_in)
-    zoom_scale = 1.0 / zoom_scale;
-
-  if (priv->scale_aspect > 0.0)
+  if (klass->zoom != NULL)
     {
-      zoom_x = TRUE;
-      zoom_y = TRUE;
+      klass->zoom (carea, direction_x, direction_y, center_x, center_y);
     }
-
-  new_scale_x = priv->cur_scale_x / zoom_scale;
-  new_scale_y = priv->cur_scale_y / zoom_scale;
-
-  if (new_scale_x < priv->min_scale_x || new_scale_x > priv->max_scale_x)
-    zoom_x = FALSE;
-  if (new_scale_y < priv->min_scale_y || new_scale_y > priv->max_scale_y)
-    zoom_y = FALSE;
-
-  if (priv->scale_aspect > 0.0 && (zoom_x == FALSE || zoom_y == FALSE))
-    return;
-  if (!zoom_x && !zoom_y)
-    return;
-
-  if (zoom_x)
-    {
-      from_x = center_val_x - (center_val_x - from_x) / zoom_scale;
-      to_x = center_val_x + (to_x - center_val_x) / zoom_scale;
-    }
-
-  if (zoom_y)
-    {
-      from_y = center_val_y - (center_val_y - from_y) / zoom_scale;
-      to_y = center_val_y + (to_y - center_val_y) / zoom_scale;
-    }
-
-  if (from_x < priv->min_x)
-    from_x = priv->min_x;
-  if (to_x > priv->max_x)
-    to_x = priv->max_x;
-  if (from_y < priv->min_y)
-    from_y = priv->min_y;
-  if (to_y > priv->max_y)
-    to_y = priv->max_y;
-
-  gtk_cifro_area_set_view (carea, from_x, to_x, from_y, to_y);
-}
-
-/* Функция переключения фиксированного масштаба. */
-void
-gtk_cifro_area_fixed_zoom (GtkCifroArea *carea,
-                           gdouble       center_val_x,
-                           gdouble       center_val_y,
-                           gboolean      zoom_in)
-{
-  GtkCifroAreaPrivate *priv;
-
-  gdouble length_x;
-  gdouble length_y;
-  gdouble from_x, to_x;
-  gdouble from_y, to_y;
-
-  g_return_if_fail (GTK_IS_CIFRO_AREA (carea));
-
-  priv = carea->priv;
-
-  if (priv->num_scales == 0)
-    return;
-
-  if (zoom_in && (priv->cur_zoom_index == priv->num_scales - 1))
-    return;
-  if (!zoom_in && (priv->cur_zoom_index == 0))
-    return;
-
-  if (zoom_in)
-    priv->cur_zoom_index++;
   else
-    priv->cur_zoom_index--;
+    {
+      gdouble scale_x = priv->scale_x;
+      gdouble scale_y = priv->scale_y;
 
-  priv->cur_scale_x = priv->zoom_x_scales[priv->cur_zoom_index];
-  priv->cur_scale_y = priv->zoom_y_scales[priv->cur_zoom_index];
+      if (direction_x == GTK_CIFRO_AREA_ZOOM_IN)
+        scale_x = 0.9 * priv->scale_x;
+      else if (direction_x == GTK_CIFRO_AREA_ZOOM_OUT)
+        scale_x = 1.1 * priv->scale_x;
 
-  length_x = priv->to_x - priv->from_x;
-  length_y = priv->to_y - priv->from_y;
+      if (direction_y == GTK_CIFRO_AREA_ZOOM_IN)
+        scale_y = 0.9 * priv->scale_y;
+      else if (direction_y == GTK_CIFRO_AREA_ZOOM_OUT)
+        scale_y = 1.1 * priv->scale_y;
 
-  from_x = center_val_x - (priv->cur_scale_x * priv->visible_width * (center_val_x - priv->from_x) / length_x);
-  to_x = center_val_x + (priv->cur_scale_x * priv->visible_width * (priv->to_x - center_val_x) / length_x);
-  from_y = center_val_y - (priv->cur_scale_y * priv->visible_height * (center_val_y - priv->from_y) / length_y);
-  to_y = center_val_y + (priv->cur_scale_y * priv->visible_height * (priv->to_y - center_val_y) / length_y);
-
-  if (from_x < priv->min_x)
-    from_x = priv->min_x;
-  if (to_x > priv->max_x)
-    to_x = priv->max_x;
-  if (from_y < priv->min_y)
-    from_y = priv->min_y;
-  if (to_y > priv->max_y)
-    to_y = priv->max_y;
-
-  gtk_cifro_area_set_view (carea, from_x, to_x, from_y, to_y);
+      gtk_cifro_area_set_scale (carea, scale_x, scale_y, center_x, center_y);
+    }
 }
 
-/* Функция преобразовает координаты из прямоугольной системы окна в логические координаты отображаемые в объекте. */
+/**
+ * gtk_cifro_area_get_size:
+ * @carea: указатель на #GtkCifroArea
+ * @width: (out) (allow-none): используемая ширина виджета
+ * @height: (out) (allow-none): используемая высота виджета
+ *
+ * Функция возвращает используемый размер виджета.
+ *
+ */
+void
+gtk_cifro_area_get_size (GtkCifroArea *carea,
+                         guint        *width,
+                         guint        *height)
+{
+  GtkCifroAreaPrivate *priv;
+
+  g_return_if_fail (GTK_IS_CIFRO_AREA (carea));
+
+  priv = carea->priv;
+
+  (width != NULL) ? *width = priv->widget_width : 0;
+  (height != NULL) ? *height = priv->widget_height : 0;
+}
+
+/**
+ * gtk_cifro_area_get_visible_size:
+ * @carea: указатель на #GtkCifroArea
+ * @width: (out) (allow-none): ширина видимой области
+ * @height: (out) (allow-none): используемая высота виджета
+ *
+ * Функция возвращает текущие значения размеров видимой области.
+ *
+ */
+void
+gtk_cifro_area_get_visible_size (GtkCifroArea *carea,
+                                 guint        *width,
+                                 guint        *height)
+{
+  GtkCifroAreaPrivate *priv;
+
+  g_return_if_fail (GTK_IS_CIFRO_AREA (carea));
+
+  priv = carea->priv;
+
+  (width != NULL) ? *width = priv->visible_width : 0;
+  (height != NULL) ? *height = priv->visible_height : 0;
+}
+
+/**
+ * gtk_cifro_area_point_to_value:
+ * @carea: указатель на #GtkCifroArea
+ * @x: координата x в окне виджета
+ * @y: координата y в окне виджета
+ * @x_val: (out) (allow-none): значение x в логической системе координат
+ * @y_val: (out) (allow-none): значение y в логической системе координат
+ *
+ * Функция преобразовает координаты из системы координат виджета в логические координаты.
+ *
+ */
 void
 gtk_cifro_area_point_to_value (GtkCifroArea *carea,
                                gdouble       x,
@@ -1760,29 +1175,20 @@ gtk_cifro_area_point_to_value (GtkCifroArea *carea,
 {
   GtkCifroAreaPrivate *priv;
 
-  gdouble x_val_tmp;
-  gdouble y_val_tmp;
+  gdouble x_val_tmp, y_val_tmp;
 
   g_return_if_fail (GTK_IS_CIFRO_AREA (carea));
 
   priv = carea->priv;
 
   /* Переносим систему координат в центр отображаемой области (виджета или изображения).
-     Этот перенос необходим для корректного расчёта логических координат при повороте.*/
+   * Этот перенос необходим для корректного расчёта логических координат при повороте.*/
   x = x - priv->widget_width / 2.0;
   y = priv->widget_height / 2.0 - y;
 
   /* Расчитываем логическую координату с учётом возможного поворота изображения. */
-  if (priv->angle != 0.0)
-    {
-      x_val_tmp = (x * priv->angle_cos - y * priv->angle_sin) * priv->cur_scale_x;
-      y_val_tmp = (y * priv->angle_cos + x * priv->angle_sin) * priv->cur_scale_y;
-    }
-  else
-    {
-      x_val_tmp = x * priv->cur_scale_x;
-      y_val_tmp = y * priv->cur_scale_y;
-    }
+  x_val_tmp = (x * priv->angle_cos - y * priv->angle_sin) * priv->scale_x;
+  y_val_tmp = (y * priv->angle_cos + x * priv->angle_sin) * priv->scale_y;
 
   /* Если включено зеркальное отражение по осям - переносим координаты. */
   if (priv->swap_x)
@@ -1794,13 +1200,21 @@ gtk_cifro_area_point_to_value (GtkCifroArea *carea,
   x_val_tmp = ((priv->to_x - priv->from_x) / 2.0) + priv->from_x + x_val_tmp;
   y_val_tmp = ((priv->to_y - priv->from_y) / 2.0) + priv->from_y + y_val_tmp;
 
-  if (x_val != NULL)
-    *x_val = x_val_tmp;
-  if (y_val != NULL)
-    *y_val = y_val_tmp;
+  (x_val != NULL) ? *x_val = x_val_tmp : 0;
+  (y_val != NULL) ? *y_val = y_val_tmp : 0;
 }
 
-/* Функция преобразовает координаты из логических в прямоугольную систему координат окна. */
+/**
+ * gtk_cifro_area_value_to_point:
+ * @carea: указатель на #GtkCifroArea
+ * @x: (out) (allow-none): координата x в окне виджета
+ * @y: (out) (allow-none): координата y в окне виджета
+ * @x_val: значение x в логической системе координат
+ * @y_val: значение y в логической системе координат
+ *
+ * Функция преобразовает координаты из логических координат в систему координат виджета.
+ *
+ */
 void
 gtk_cifro_area_value_to_point (GtkCifroArea *carea,
                                gdouble      *x,
@@ -1810,21 +1224,20 @@ gtk_cifro_area_value_to_point (GtkCifroArea *carea,
 {
   GtkCifroAreaPrivate *priv;
 
-  gdouble x_tmp;
-  gdouble y_tmp;
+  gdouble x_tmp, y_tmp;
 
   g_return_if_fail (GTK_IS_CIFRO_AREA (carea));
 
   priv = carea->priv;
 
   /* Переносим систему координат в центр видимой области.
-     Этот перенос необходим для корректного расчёта координат при повороте. */
+   * Этот перенос необходим для корректного расчёта координат при повороте. */
   x_val = x_val - ((priv->to_x - priv->from_x) / 2.0) - priv->from_x;
   y_val = y_val - ((priv->to_y - priv->from_y) / 2.0) - priv->from_y;
 
   /* Перводим из логических координат в точки. */
-  x_val = x_val / priv->cur_scale_x;
-  y_val = y_val / priv->cur_scale_y;
+  x_val = x_val / priv->scale_x;
+  y_val = y_val / priv->scale_y;
 
   /* Если включено зеркальное отражение по осям - переносим координаты. */
   if (priv->swap_x)
@@ -1833,28 +1246,29 @@ gtk_cifro_area_value_to_point (GtkCifroArea *carea,
     y_val = -y_val;
 
   /* Расчитываем координаты с учётом возможного поворота изображения. */
-  if (priv->angle != 0.0)
-    {
-      x_tmp = x_val * priv->angle_cos + y_val * priv->angle_sin;
-      y_tmp = y_val * priv->angle_cos - x_val * priv->angle_sin;
-    }
-  else
-    {
-      x_tmp = x_val;
-      y_tmp = y_val;
-    }
+  x_tmp = x_val * priv->angle_cos + y_val * priv->angle_sin;
+  y_tmp = y_val * priv->angle_cos - x_val * priv->angle_sin;
 
   /* Выполняем обратный перенос системы координат. */
   x_tmp = x_tmp + priv->widget_width / 2.0;
   y_tmp = priv->widget_height / 2.0 - y_tmp;
 
-  if (x != NULL)
-    *x = x_tmp;
-  if (y != NULL)
-    *y = y_tmp;
+  (x != NULL) ? *x = x_tmp : 0;
+  (y != NULL) ? *y = y_tmp : 0;
 }
 
-/* Функция преобразовает координаты из прямоугольной системы видимой области в логические координаты. */
+/**
+ * gtk_cifro_area_visible_point_to_value:
+ * @carea: указатель на #GtkCifroArea
+ * @x: координата x в видимой области
+ * @y: координата y в видимой области
+ * @x_val: (out) (allow-none): значение x в логической системе координат
+ * @y_val: (out) (allow-none): значение y в логической системе координат
+ *
+ * Функция преобразовает координаты из прямоугольной системы видимой области
+ * в логические координаты.
+ *
+ */
 void
 gtk_cifro_area_visible_point_to_value (GtkCifroArea *carea,
                                        gdouble       x,
@@ -1868,13 +1282,22 @@ gtk_cifro_area_visible_point_to_value (GtkCifroArea *carea,
 
   priv = carea->priv;
 
-  if (x_val != NULL)
-    *x_val = priv->from_x + x * priv->cur_scale_x;
-  if (y_val != NULL)
-    *y_val = priv->to_y - y * priv->cur_scale_y;
+  (x_val != NULL) ? *x_val = (priv->from_x + x * priv->scale_x) : 0;
+  (y_val != NULL) ? *y_val = (priv->to_y - y * priv->scale_y) : 0;
 }
 
-/* Функция преобразовает координаты из логических в прямоугольную систему координат видимой области. */
+/**
+ * gtk_cifro_area_visible_value_to_point:
+ * @carea: указатель на #GtkCifroArea
+ * @x: (out) (allow-none): координата x в видимой области
+ * @y: (out) (allow-none): координата y в видимой области
+ * @x_val: значение x в логической системе координат
+ * @y_val: значение y в логической системе координат
+ *
+ * Функция преобразовает координаты из логических в прямоугольную систему
+ * координат видимой области.
+ *
+ */
 void
 gtk_cifro_area_visible_value_to_point (GtkCifroArea *carea,
                                        gdouble      *x,
@@ -1888,19 +1311,33 @@ gtk_cifro_area_visible_value_to_point (GtkCifroArea *carea,
 
   priv = carea->priv;
 
-  if (x != NULL)
-    *x = (x_val - priv->from_x) / priv->cur_scale_x;
-  if (y != NULL)
-    *y = (priv->to_y - y_val) / priv->cur_scale_y;
+  (x != NULL) ? *x = ((x_val - priv->from_x) / priv->scale_x) : 0;
+  (y != NULL) ? *y = ((priv->to_y - y_val) / priv->scale_y) : 0;
 }
 
-/* Функция расчитывает параметры прямоугольной координатной сетки. */
-void
+/**
+ * gtk_cifro_area_get_axis_step:
+ * @scale: масштаб, число точек экрана в одной логической единице
+ * @step_width: желаемое расстояние между координатными осями, точки экрана
+ * @from: (out): логическая координата первой линии сетки
+ * @step: (out) (allow-none): логические шаг между линиями сетки
+ * @range: (out) (allow-none): цена деления координатной сетки
+ * @power: (out) (allow-none): степень цены деления координатной сетки
+ *
+ * Функция расчитывает параметры прямоугольной координатной сетки. В функцию должны быть
+ * переданы масштаб, желаемое расстояние между осями и начало области. Функция вернёт
+ * выровненную по шагу между линиями сетки координату первой линии. При необходимости
+ * функция вернёт шаг между линиями сетки, цену деления сетки и степень цены деления сетки.
+ *
+ * Returns: %TRUE если параметры рассчитаны.
+ *
+ */
+gboolean
 gtk_cifro_area_get_axis_step (gdouble  scale,
                               gdouble  step_width,
                               gdouble *from,
                               gdouble *step,
-                              gint    *range,
+                              guint   *range,
                               gint    *power)
 {
   gdouble step_length;
@@ -1915,11 +1352,13 @@ gtk_cifro_area_get_axis_step (gdouble  scale,
 
   gdouble from_ret;
   gdouble step_ret;
-  gint range_ret;
+  guint range_ret;
   gint power_ret;
 
   /* Расстояние между соседними линиями координатной сетки в логических координатах. */
   step_length = scale * step_width;
+  if (step_length <= 0.0)
+    return FALSE;
 
   /* Нормируем расстояние в диапазон значений от 1 до 10. */
   power_ret = 0;
@@ -1945,7 +1384,7 @@ gtk_cifro_area_get_axis_step (gdouble  scale,
   /* Выбираем с каким шагом рисовать сетку: 1, 2 или 5 (плюс их степени). */
 
   /* Расчитываем разность между размером ячейки для трёх возможных вариантов сетки и
-     предпочтительным размером ячейки определёеным пользователем. */
+   * предпочтительным размером ячейки определённым пользователем. */
   axis_1_width_delta = (1.0 * pow (10.0, power_ret) / scale) - step_width;
   axis_2_width_delta = (2.0 * pow (10.0, power_ret) / scale) - step_width;
   axis_5_width_delta = (5.0 * pow (10.0, power_ret) / scale) - step_width;
@@ -1956,7 +1395,7 @@ gtk_cifro_area_get_axis_step (gdouble  scale,
   axis_5_score = (axis_5_width_delta >= 0.0) ? 1.0 / axis_5_width_delta : -0.1 / axis_5_width_delta;
 
   /* Выбираем предпочтительный шаг координатной сетки. */
-  if (axis_1_score > axis_2_score && axis_1_score > axis_5_score)
+  if ((axis_1_score > axis_2_score) && (axis_1_score > axis_5_score))
     range_ret = 1;
   else if (axis_2_score > axis_5_score)
     range_ret = 2;
@@ -1973,15 +1412,22 @@ gtk_cifro_area_get_axis_step (gdouble  scale,
 
   /* Возвращаем результаты. */
   *from = from_ret;
-  if (step != NULL)
-    *step = step_ret;
-  if (range != NULL)
-    *range = range_ret;
-  if (power != NULL)
-    *power = power_ret;
+  (step != NULL) ? *step = step_ret : 0;
+  (range != NULL) ? *range = range_ret : 0;
+  (power != NULL) ? *power = power_ret : 0;
+
+  return TRUE;
 }
 
-/* Функция выравнивает координаты для использования в библиотеке cairo. */
+/**
+ * gtk_cifro_area_point_to_cairo:
+ * @point: координата для выравнивания
+ *
+ * Функция выравнивает координаты для использования в библиотеке cairo.
+ *
+ * Returns: координата для использования в библиотеке cairo.
+ *
+ */
 gdouble
 gtk_cifro_area_point_to_cairo (gdouble point)
 {
