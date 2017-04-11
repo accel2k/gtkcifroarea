@@ -61,8 +61,8 @@ void                   cairo_sdline_set_cairo_color    (cairo_t               *c
                                                         guint32                color);
 
 /* Функция создаёт поверхность для рисования указанного размера. */
-cairo_sdline_surface*  cairo_sdline_surface_create     (gint                   width,
-                                                        gint                   height);
+cairo_sdline_surface*  cairo_sdline_surface_create     (gint32                 width,
+                                                        gint32                 height);
 
 /* Функция создаёт поверхность для рисования для указанной поверхности cairo. */
 cairo_sdline_surface*  cairo_sdline_surface_create_for (cairo_surface_t       *cairo_surface);
@@ -85,38 +85,38 @@ void                   cairo_sdline_clear_color        (cairo_sdline_surface  *s
 
 /* Функция рисует горизонтальную линию указанным цветом. */
 void                   cairo_sdline_h                  (cairo_sdline_surface  *surface,
-                                                        gint                   x1,
-                                                        gint                   x2,
-                                                        gint                   y1,
+                                                        gint32                 x1,
+                                                        gint32                 x2,
+                                                        gint32                 y1,
                                                         guint32                color);
 
 /* Функция рисует вертикальную линию указанным цветом. */
 void                   cairo_sdline_v                  (cairo_sdline_surface  *surface,
-                                                        gint                   x1,
-                                                        gint                   y1,
-                                                        gint                   y2,
+                                                        gint32                 x1,
+                                                        gint32                 y1,
+                                                        gint32                 y2,
                                                         guint32                color);
 
 /* Функция рисует произвольную линию указанным цветом. */
 void                   cairo_sdline                    (cairo_sdline_surface  *surface,
-                                                        gint                   x1,
-                                                        gint                   y1,
-                                                        gint                   x2,
-                                                        gint                   y2,
+                                                        gint32                 x1,
+                                                        gint32                 y1,
+                                                        gint32                 x2,
+                                                        gint32                 y2,
                                                         guint32                color);
 
 /* Функция рисует прямоугольник, закрашенный указанным цветом. */
 void                   cairo_sdline_bar                (cairo_sdline_surface  *surface,
-                                                        gint                   x1,
-                                                        gint                   y1,
-                                                        gint                   x2,
-                                                        gint                   y2,
+                                                        gint32                 x1,
+                                                        gint32                 y1,
+                                                        gint32                 x2,
+                                                        gint32                 y2,
                                                         guint32                color);
 
 /* Функция рисует точку указанным цветом. */
 void                   cairo_sdline_dot                (cairo_sdline_surface  *surface,
-                                                        gint                   x,
-                                                        gint                   y,
+                                                        gint32                 x,
+                                                        gint32                 y,
                                                         guint32                color);
 
 G_END_DECLS

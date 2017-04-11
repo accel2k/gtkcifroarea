@@ -115,6 +115,13 @@ void                   gtk_cifro_scope_set_limits              (GtkCifroScope   
                                                                 gdouble                max_y);
 
 GTK_CIFROAREA_EXPORT
+void                   gtk_cifro_scope_set_scale_limits        (GtkCifroScope         *cscope,
+                                                                gdouble                min_scale_x,
+                                                                gdouble                max_scale_x,
+                                                                gdouble                min_scale_y,
+                                                                gdouble                max_scale_y);
+
+GTK_CIFROAREA_EXPORT
 void                   gtk_cifro_scope_set_info_show           (GtkCifroScope         *cscope,
                                                                 gboolean               show);
 
@@ -136,16 +143,16 @@ void                   gtk_cifro_scope_set_channel_name        (GtkCifroScope   
                                                                 const gchar           *axis_name);
 
 GTK_CIFROAREA_EXPORT
-void                   gtk_cifro_scope_set_channel_time_param (GtkCifroScope          *cscope,
-                                                               guint                   channel_id,
-                                                               gfloat                  time_shift,
-                                                               gfloat                  time_step);
+void                   gtk_cifro_scope_set_channel_time_param  (GtkCifroScope         *cscope,
+                                                                guint                  channel_id,
+                                                                gdouble                time_shift,
+                                                                gdouble                time_step);
 
 GTK_CIFROAREA_EXPORT
 void                   gtk_cifro_scope_set_channel_value_param (GtkCifroScope         *cscope,
                                                                 guint                  channel_id,
-                                                                gfloat                 value_shift,
-                                                                gfloat                 value_scale);
+                                                                gdouble                value_shift,
+                                                                gdouble                value_scale);
 
 GTK_CIFROAREA_EXPORT
 void                   gtk_cifro_scope_set_channel_draw_type   (GtkCifroScope         *cscope,

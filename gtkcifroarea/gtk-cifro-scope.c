@@ -61,10 +61,10 @@ typedef struct
   gboolean                     show;                           /* "Выключатели" каналов осциллографа. */
   gint                         num;                            /* Число данных для отображения. */
 
-  gfloat                       time_shift;                     /* Смещение данных по времени. */
-  gfloat                       time_step;                      /* Шаг времени. */
-  gfloat                       value_shift;                    /* Коэффициент смещения данных. */
-  gfloat                       value_scale;                    /* Коэффициент масштабирования данных. */
+  gdouble                      time_shift;                     /* Смещение данных по времени. */
+  gdouble                      time_step;                      /* Шаг времени. */
+  gdouble                      value_shift;                    /* Коэффициент смещения данных. */
+  gdouble                      value_scale;                    /* Коэффициент масштабирования данных. */
 
   gfloat                      *data;                           /* Данные для отображения. */
   gint                         size;                           /* Размер массива данных для отображения. */
@@ -76,15 +76,20 @@ struct _GtkCifroScopePrivate
   gboolean                     show_info;                      /* Показывать или нет информацию о значениях под курсором. */
   gint32                       next_channel_id;                /* Идентификатор для нового канала. */
 
-  gdouble                      min_x;                          /* Минимально возможное значение по оси x. */
-  gdouble                      max_x;                          /* Максимально возможное значение по оси x. */
-  gdouble                      min_y;                          /* Минимально возможное значение по оси y. */
-  gdouble                      max_y;                          /* Максимально возможное значение по оси y. */
+  gdouble                      min_x;                          /* Минимально возможное значение по оси X. */
+  gdouble                      max_x;                          /* Максимально возможное значение по оси X. */
+  gdouble                      min_y;                          /* Минимально возможное значение по оси Y. */
+  gdouble                      max_y;                          /* Максимально возможное значение по оси Y. */
+
+  gdouble                      min_scale_x;                    /* Минимально возможный масштаб (приближение) по оси X. */
+  gdouble                      max_scale_x;                    /* Максимально возможный масштаб (отдаление) по оси X. */
+  gdouble                      min_scale_y;                    /* Минимально возможный масштаб (приближение) по оси Y. */
+  gdouble                      max_scale_y;                    /* Максимально возможный масштаб (отдаление) по оси Y. */
 
   GHashTable                  *channels;                       /* Данные каналов осциллографа. */
 
-  gint                         pointer_x;                      /* Текущее местоположение курсора, x координата. */
-  gint                         pointer_y;                      /* Текущее местоположение курсора, y координата. */
+  gint                         pointer_x;                      /* Текущее местоположение курсора, X координата. */
+  gint                         pointer_y;                      /* Текущее местоположение курсора, Y координата. */
 
   PangoLayout                 *font;                           /* Раскладка шрифта. */
 
@@ -124,6 +129,10 @@ static void            gtk_cifro_scope_get_limits              (GtkCifroArea    
                                                                 gdouble                       *max_x,
                                                                 gdouble                       *min_y,
                                                                 gdouble                       *max_y);
+
+static void            gtk_cifro_scope_check_scale             (GtkCifroArea                  *carea,
+                                                                gdouble                       *scale_x,
+                                                                gdouble                       *scale_y);
 
 static void            gtk_cifro_scope_set_fg_color            (GtkCifroScopePrivate          *priv,
                                                                 gdouble                        red,
@@ -191,6 +200,7 @@ gtk_cifro_scope_class_init (GtkCifroScopeClass *klass)
   carea_class->get_swap = gtk_cifro_scope_get_swap;
   carea_class->get_border = gtk_cifro_scope_get_border;
   carea_class->get_limits = gtk_cifro_scope_get_limits;
+  carea_class->check_scale = gtk_cifro_scope_check_scale;
 
   g_object_class_install_property (object_class, PROP_GRAVITY,
     g_param_spec_int ("gravity", "Gravity", "Gravity",
@@ -230,6 +240,18 @@ gtk_cifro_scope_object_constructed (GObject *object)
 
   /* Параметры GtkCifroArea по умолчанию. */
   gtk_cifro_area_set_scale_on_resize (GTK_CIFRO_AREA (cscope), TRUE);
+
+  /* Диапазоны значений по умолчанию. */
+  priv->min_x = 1e-6;
+  priv->max_x = 1e+6;
+  priv->min_y = 1e-6;
+  priv->max_y = 1e+6;
+
+  /* Диапазоны масштабой по умолчанию. */
+  priv->min_scale_x = 1e-6;
+  priv->max_scale_x = 1e+6;
+  priv->min_scale_y = 1e-6;
+  priv->max_scale_y = 1e+6;
 
   /* Информация об осях. */
   priv->x_axis_name = g_strdup ("X");
@@ -401,6 +423,22 @@ gtk_cifro_scope_get_limits (GtkCifroArea *carea,
   (max_x != NULL) ? *max_x = priv->max_x : 0;
   (min_y != NULL) ? *min_y = priv->min_y : 0;
   (max_y != NULL) ? *max_y = priv->max_y : 0;
+}
+
+/* Виртуальная функция ограничения масштабов. */
+static void
+gtk_cifro_scope_check_scale (GtkCifroArea *carea,
+                             gdouble      *scale_x,
+                             gdouble      *scale_y)
+{
+  GtkCifroScopePrivate *priv;
+  GtkCifroScope *cscope;
+
+  cscope = GTK_CIFRO_SCOPE (carea);
+  priv = cscope->priv;
+
+  *scale_x = CLAMP (*scale_x, priv->min_scale_x, priv->max_scale_x);
+  *scale_y = CLAMP (*scale_y, priv->min_scale_y, priv->max_scale_y);
 }
 
 /* Функция устанавливает основной цвет для отображения графических элементов в осциллографе. */
@@ -1271,19 +1309,19 @@ gtk_cifro_scope_draw_lined_data (GtkWidget            *widget,
 
   gfloat *values_data;
   gint values_num;
-  gfloat times_shift;
-  gfloat times_step;
-  gfloat values_scale;
-  gfloat values_shift;
+  gdouble times_shift;
+  gdouble times_step;
+  gdouble values_scale;
+  gdouble values_shift;
   guint32 values_color;
 
 #define VALUES_DATA(i) ((values_data[i] * values_scale) + values_shift)
 
   gint i, j;
   gint i_range_begin, i_range_end;
-  gfloat x_range_begin, x_range_end;
-  gfloat y_start, y_end;
-  gfloat x1, x2, y1, y2;
+  gdouble x_range_begin, x_range_end;
+  gdouble y_start, y_end;
+  gdouble x1, x2, y1, y2;
   gboolean draw = FALSE;
 
   /* Проверяем существование канала. */
@@ -1373,7 +1411,7 @@ gtk_cifro_scope_draw_lined_data (GtkWidget            *widget,
           /* Предыдущей точки нет, расчитаем значение и расстояние до нее от текущей позиции. */
           if ((x1 < 0) && (i_range_begin >= 0))
             {
-              x1 = (gfloat) i - (times_step / scale_x) + 1.0;
+              x1 = (gdouble) i - (times_step / scale_x) + 1.0;
               y1 = (to_y - VALUES_DATA (i_range_begin)) / scale_y;
               x1 = CLAMP (x1, G_MININT32, G_MAXINT32);
               y1 = CLAMP (y1, G_MININT32, G_MAXINT32);
@@ -1468,10 +1506,10 @@ gtk_cifro_scope_draw_dotted_data (GtkWidget            *widget,
 
   gfloat *values_data;
   gint values_num;
-  gfloat times_shift;
-  gfloat times_step;
-  gfloat values_scale;
-  gfloat values_shift;
+  gdouble times_shift;
+  gdouble times_step;
+  gdouble values_scale;
+  gdouble values_shift;
   guint32 values_color;
 
 #define VALUES_TIME(i) ((i * times_step) + times_shift)
@@ -1479,7 +1517,7 @@ gtk_cifro_scope_draw_dotted_data (GtkWidget            *widget,
 
   gint i;
   gint i_range_begin, i_range_end;
-  gfloat x, y;
+  gdouble x, y;
 
   /* Проверяем существование канала. */
   if (channel == NULL)
@@ -1505,7 +1543,7 @@ gtk_cifro_scope_draw_dotted_data (GtkWidget            *widget,
   if (i_range_begin > i_range_end)
     return;
 
-  for (i = i_range_begin; i < i_range_end; i++)
+  for (i = i_range_begin; i <= i_range_end; i++)
     {
       if (isnan (values_data[i]))
         continue;
@@ -1544,10 +1582,10 @@ gtk_cifro_scope_draw_crossed_data (GtkWidget            *widget,
 
   gfloat *values_data;
   gint values_num;
-  gfloat times_shift;
-  gfloat times_step;
-  gfloat values_scale;
-  gfloat values_shift;
+  gdouble times_shift;
+  gdouble times_step;
+  gdouble values_scale;
+  gdouble values_shift;
   guint32 values_color;
 
 #define VALUES_TIME(i) ((i * times_step) + times_shift)
@@ -1555,7 +1593,7 @@ gtk_cifro_scope_draw_crossed_data (GtkWidget            *widget,
 
   gint i;
   gint i_range_begin, i_range_end;
-  gfloat x, y;
+  gdouble x, y;
 
   /* Проверяем существование канала. */
   if (channel == NULL)
@@ -1581,7 +1619,7 @@ gtk_cifro_scope_draw_crossed_data (GtkWidget            *widget,
   if (i_range_begin > i_range_end)
     return;
 
-  for (i = i_range_begin; i < i_range_end; i++)
+  for (i = i_range_begin; i <= i_range_end; i++)
     {
       if (isnan (values_data[i]))
         continue;
@@ -1849,6 +1887,37 @@ gtk_cifro_scope_set_limits (GtkCifroScope *cscope,
 }
 
 /**
+ * gtk_cifro_scope_set_scale_limits:
+ * @cscope: указатель на #GtkCifroScope
+ * @min_scale_x: минимально возможный масштаб (приближение) по оси X
+ * @max_scale_x: максимально возможный масштаб (отдаление) по оси X
+ * @min_scale_y: минимально возможный масштаб (приближение) по оси Y
+ * @max_scale_y: максимально возможный масштаб (отдаление) по оси Y
+ *
+ * Функция устанавливает диапазон значений отображаемых данных.
+ *
+ */
+void
+gtk_cifro_scope_set_scale_limits (GtkCifroScope *cscope,
+                                  gdouble        min_scale_x,
+                                  gdouble        max_scale_x,
+                                  gdouble        min_scale_y,
+                                  gdouble        max_scale_y)
+{
+  g_return_if_fail (GTK_IS_CIFRO_SCOPE (cscope));
+
+  g_return_if_fail (min_scale_x < max_scale_x);
+  g_return_if_fail (min_scale_y < max_scale_y);
+
+  cscope->priv->min_scale_x = min_scale_x;
+  cscope->priv->max_scale_x = max_scale_x;
+  cscope->priv->min_scale_y = min_scale_y;
+  cscope->priv->max_scale_y = max_scale_y;
+
+  gtk_widget_queue_draw (GTK_WIDGET (cscope));
+}
+
+/**
  * gtk_cifro_scope_set_info_show:
  * @cscope: указатель на #GtkCifroScope
  * @show: признак отображения информационного блока
@@ -2003,8 +2072,8 @@ gtk_cifro_scope_set_channel_name (GtkCifroScope *cscope,
 void
 gtk_cifro_scope_set_channel_time_param (GtkCifroScope *cscope,
                                         guint          channel_id,
-                                        gfloat         time_shift,
-                                        gfloat         time_step)
+                                        gdouble        time_shift,
+                                        gdouble        time_step)
 {
   GHashTableIter channels_iter;
   GtkCifroScopeChannel *channel;
@@ -2039,8 +2108,8 @@ gtk_cifro_scope_set_channel_time_param (GtkCifroScope *cscope,
 void
 gtk_cifro_scope_set_channel_value_param (GtkCifroScope *cscope,
                                          guint          channel_id,
-                                         gfloat         value_shift,
-                                         gfloat         value_scale)
+                                         gdouble        value_shift,
+                                         gdouble        value_scale)
 {
   GHashTableIter channels_iter;
   GtkCifroScopeChannel *channel;

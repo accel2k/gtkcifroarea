@@ -69,12 +69,12 @@
  *
  */
 static gint
-_clipEncode (gint x,
-             gint y,
-             gint left,
-             gint top,
-             gint right,
-             gint bottom)
+_clipEncode (gint64 x,
+             gint64 y,
+             gint32 left,
+             gint32 top,
+             gint32 right,
+             gint32 bottom)
 {
   gint code = 0;
 
@@ -110,18 +110,21 @@ _clipEncode (gint x,
  *  - Pointer to Y coordinate of second point of line.
  *
  */
-static gint
+static gboolean
 _clipLine (cairo_sdline_surface *surface,
-           gint                 *x1,
-           gint                 *y1,
-           gint                 *x2,
-           gint                 *y2)
+           gint32               *x1,
+           gint32               *y1,
+           gint32               *x2,
+           gint32               *y2)
 {
-  gint left, right, top, bottom;
   gint code1, code2;
-  gint draw = 0;
-  gint swaptmp;
-  gfloat m;
+  gint32 left, right, top, bottom;
+  gint64 x1_64, x2_64, y1_64, y2_64;
+  gint64 swaptmp;
+  gdouble m;
+  gdouble v;
+
+  gboolean draw = FALSE;
 
   /*
    * Get clipping boundary
@@ -131,13 +134,18 @@ _clipLine (cairo_sdline_surface *surface,
   top = 0;
   bottom = surface->height - 1;
 
+  x1_64 = *x1;
+  x2_64 = *x2;
+  y1_64 = *y1;
+  y2_64 = *y2;
+
   while (1)
     {
-      code1 = _clipEncode (*x1, *y1, left, top, right, bottom);
-      code2 = _clipEncode (*x2, *y2, left, top, right, bottom);
+      code1 = _clipEncode (x1_64, y1_64, left, top, right, bottom);
+      code2 = _clipEncode (x2_64, y2_64, left, top, right, bottom);
       if (CLIP_ACCEPT(code1, code2))
         {
-          draw = 1;
+          draw = TRUE;
           break;
         }
       else if (CLIP_REJECT(code1, code2))
@@ -148,50 +156,65 @@ _clipLine (cairo_sdline_surface *surface,
         {
           if (CLIP_INSIDE(code1))
             {
-              swaptmp = *x2;
-              *x2 = *x1;
-              *x1 = swaptmp;
-              swaptmp = *y2;
-              *y2 = *y1;
-              *y1 = swaptmp;
+              swaptmp = x2_64;
+              x2_64 = x1_64;
+              x1_64 = swaptmp;
+
+              swaptmp = y2_64;
+              y2_64 = y1_64;
+              y1_64 = swaptmp;
+
               swaptmp = code2;
               code2 = code1;
               code1 = swaptmp;
             }
 
-          if (*x2 != *x1)
+          if (x2_64 != x1_64)
             {
-              m = (float) (*y2 - *y1) / (float) (*x2 - *x1);
+              m = (gdouble) (y2_64 - y1_64) / (gdouble) (x2_64 - x1_64);
             }
           else
             {
-              m = 1.0f;
+              m = 1.0;
             }
 
           if (code1 & CLIP_LEFT_EDGE)
             {
-              *y1 += (int) ((left - *x1) * m);
-              *x1 = left;
+              v = ((left - x1_64) * m);
+              y1_64 += (gint32) CLAMP (v, G_MININT32, G_MAXINT32);
+              x1_64 = left;
             }
           else if (code1 & CLIP_RIGHT_EDGE)
             {
-              *y1 += (int) ((right - *x1) * m);
-              *x1 = right;
+              v = ((right - x1_64) * m);
+              y1_64 += (gint32) CLAMP (v, G_MININT32, G_MAXINT32);
+              x1_64 = right;
             }
           else if (code1 & CLIP_BOTTOM_EDGE)
             {
-              if (*x2 != *x1)
-                *x1 += (int) ((bottom - *y1) / m);
-              *y1 = bottom;
+              if (x2_64 != x1_64)
+                {
+                  v = ((bottom - y1_64) / m);
+                  x1_64 += (gint32) CLAMP (v, G_MININT32, G_MAXINT32);
+                }
+              y1_64 = bottom;
             }
           else if (code1 & CLIP_TOP_EDGE)
             {
-              if (*x2 != *x1)
-                *x1 += (int) ((top - *y1) / m);
-              *y1 = top;
+              if (x2_64 != x1_64)
+                {
+                  v = ((top - y1_64) / m);
+                  x1_64 += (gint32) CLAMP (v, G_MININT32, G_MAXINT32);
+                }
+              y1_64 = top;
             }
         }
     }
+
+  *x1 = CLAMP (x1_64, G_MININT32, G_MAXINT32);
+  *x2 = CLAMP (x2_64, G_MININT32, G_MAXINT32);
+  *y1 = CLAMP (y1_64, G_MININT32, G_MAXINT32);
+  *y2 = CLAMP (y2_64, G_MININT32, G_MAXINT32);
 
   return draw;
 }
@@ -213,8 +236,8 @@ cairo_sdline_set_cairo_color (cairo_t *cairo,
 
 /* Функция создаёт поверхность для рисования указанного размера. */
 cairo_sdline_surface *
-cairo_sdline_surface_create (gint width,
-                             gint height)
+cairo_sdline_surface_create (gint32 width,
+                             gint32 height)
 {
   cairo_surface_t *cairo_surface;
   cairo_sdline_surface *surface;
@@ -324,8 +347,8 @@ void
 cairo_sdline_clear_color (cairo_sdline_surface *surface,
                           guint32               color)
 {
-  gint shift;
-  gint i;
+  gint32 shift;
+  gint32 i;
 
   if (surface == NULL)
     return;
@@ -340,14 +363,14 @@ cairo_sdline_clear_color (cairo_sdline_surface *surface,
 /* Функция рисует горизонтальную линию указанным цветом. */
 void
 cairo_sdline_h (cairo_sdline_surface *surface,
-                gint                  x1,
-                gint                  x2,
-                gint                  y1,
+                gint32                x1,
+                gint32                x2,
+                gint32                y1,
                 guint32               color)
 {
-  gint swaptmp;
-  gint shift;
-  gint i;
+  gint32 swaptmp;
+  gint32 shift;
+  gint32 i;
 
   if (surface == NULL)
     return;
@@ -379,14 +402,14 @@ cairo_sdline_h (cairo_sdline_surface *surface,
 /* Функция рисует вертикальную линию указанным цветом. */
 void
 cairo_sdline_v (cairo_sdline_surface *surface,
-                gint                  x1,
-                gint                  y1,
-                gint                  y2,
+                gint32                x1,
+                gint32                y1,
+                gint32                y2,
                 guint32               color)
 {
-  gint swaptmp;
-  gint shift;
-  gint i;
+  gint32 swaptmp;
+  gint32 shift;
+  gint32 i;
 
   if (surface == NULL)
     return;
@@ -418,24 +441,24 @@ cairo_sdline_v (cairo_sdline_surface *surface,
 /* Функция рисует произвольную линию указанным цветом. */
 void
 cairo_sdline (cairo_sdline_surface *surface,
-              gint                  x1,
-              gint                  y1,
-              gint                  x2,
-              gint                  y2,
+              gint32                x1,
+              gint32                y1,
+              gint32                x2,
+              gint32                y2,
               guint32               color)
 {
-  gint pixx, pixy;
-  gint dx, dy;
-  gint sx, sy;
-  gint x, y;
+  gint32 pixx, pixy;
+  gint32 dx, dy;
+  gint32 sx, sy;
+  gint32 x, y;
 
-  gint swaptmp;
+  gint32 swaptmp;
   guchar *pixel;
 
   if (surface == NULL)
     return;
 
-  if (!(_clipLine (surface, &x1, &y1, &x2, &y2)))
+  if (!_clipLine (surface, &x1, &y1, &x2, &y2))
     return;
 
   if (x1 == x2)
@@ -487,15 +510,15 @@ cairo_sdline (cairo_sdline_surface *surface,
 /* Функция рисует прямоугольник, закрашенный указанным цветом. */
 void
 cairo_sdline_bar (cairo_sdline_surface *surface,
-                  gint                  x1,
-                  gint                  y1,
-                  gint                  x2,
-                  gint                  y2,
+                  gint32                x1,
+                  gint32                y1,
+                  gint32                x2,
+                  gint32                y2,
                   guint32               color)
 {
-  gint swaptmp;
-  gint shift;
-  gint i, j;
+  gint32 swaptmp;
+  gint32 shift;
+  gint32 i, j;
 
   if (surface == NULL)
     return;
@@ -543,11 +566,11 @@ cairo_sdline_bar (cairo_sdline_surface *surface,
 /* Функция рисует точку указанным цветом. */
 void
 cairo_sdline_dot (cairo_sdline_surface *surface,
-                  gint                  x,
-                  gint                  y,
+                  gint32                x,
+                  gint32                y,
                   guint32               color)
 {
-  gint shift;
+  gint32 shift;
 
   if (surface == NULL)
     return;
