@@ -268,12 +268,14 @@ gtk_cifro_curve_visible_draw (GtkWidget *widget,
       gtk_cifro_area_visible_point_to_value (carea, i, 0, &x_value, NULL);
       y_value = priv->curve_func (x_value, priv->curve_points, priv->curve_data);
       gtk_cifro_area_visible_value_to_point (carea, NULL, &y2, x_value, y_value);
+      y2 = CLAMP (y2, G_MININT32, G_MAXINT32);
 
       if (i == 0)
         {
           y1 = y2;
           continue;
         }
+
       cairo_sdline (surface, i - 1, y1, i, y2, priv->curve_color);
       y1 = y2;
     }

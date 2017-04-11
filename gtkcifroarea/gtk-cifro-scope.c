@@ -1354,15 +1354,15 @@ gtk_cifro_scope_draw_lined_data (GtkWidget            *widget,
             {
               x1 = ((times_step * floor (from_x / times_step)) - from_x) / scale_x;
               y1 = (to_y - VALUES_DATA (i_range_begin)) / scale_y;
-              x1 = CLAMP( x1, -32000.0, 32000.0 );
-              y1 = CLAMP( y1, -32000.0, 32000.0 );
+              x1 = CLAMP (x1, G_MININT32, G_MAXINT32);
+              y1 = CLAMP (y1, G_MININT32, G_MAXINT32);
             }
 
           /* Значение и расстояние до текущей точки от конца видимой осциллограммы. */
           x2 = visible_width + ((times_step * ceil (to_x / times_step)) - to_x) / scale_x;
           y2 = (to_y - VALUES_DATA (i_range_end + 1)) / scale_y;
-          x2 = CLAMP( x2, -32000.0, 32000.0 );
-          y2 = CLAMP( y2, -32000.0, 32000.0 );
+          x2 = CLAMP (x2, G_MININT32, G_MAXINT32);
+          y2 = CLAMP (y2, G_MININT32, G_MAXINT32);
           draw = TRUE;
         }
 
@@ -1375,12 +1375,12 @@ gtk_cifro_scope_draw_lined_data (GtkWidget            *widget,
             {
               x1 = (gfloat) i - (times_step / scale_x) + 1.0;
               y1 = (to_y - VALUES_DATA (i_range_begin)) / scale_y;
-              x1 = CLAMP (x1, -32000.0, 32000.0);
-              y1 = CLAMP (y1, -32000.0, 32000.0);
+              x1 = CLAMP (x1, G_MININT32, G_MAXINT32);
+              y1 = CLAMP (y1, G_MININT32, G_MAXINT32);
             }
 
           y2 = (to_y - VALUES_DATA (i_range_end)) / scale_y;
-          y2 = CLAMP (y2, -32000.0, 32000.0);
+          y2 = CLAMP (y2, G_MININT32, G_MAXINT32);
           if (!isnan (values_data[i_range_begin]) && !isnan (values_data[i_range_end]))
             draw = TRUE;
         }
@@ -1394,8 +1394,8 @@ gtk_cifro_scope_draw_lined_data (GtkWidget            *widget,
             {
               y1 = (to_y - VALUES_DATA (i_range_begin)) / scale_y;
               y2 = (to_y - VALUES_DATA (i_range_begin + 1)) / scale_y;
-              y1 = CLAMP (y1, -32000.0, 32000.0);
-              y2 = CLAMP (y2, -32000.0, 32000.0);
+              y1 = CLAMP (y1, G_MININT32, G_MAXINT32);
+              y2 = CLAMP (y2, G_MININT32, G_MAXINT32);
               cairo_sdline (surface, x2 - 1, y1, x2, y2, values_color);
               draw = TRUE;
             }
@@ -1414,9 +1414,9 @@ gtk_cifro_scope_draw_lined_data (GtkWidget            *widget,
             {
               if (isnan (values_data[j]))
                 continue;
-              if ( VALUES_DATA (j) < y_start)
+              if (VALUES_DATA (j) < y_start)
                 y_start = VALUES_DATA (j);
-              if ( VALUES_DATA (j) > y_end)
+              if (VALUES_DATA (j) > y_end)
                 y_end = VALUES_DATA (j);
               draw = TRUE;
             }
@@ -1424,8 +1424,8 @@ gtk_cifro_scope_draw_lined_data (GtkWidget            *widget,
           x1 = i;
           y1 = (to_y - y_start) / scale_y;
           y2 = (to_y - y_end) / scale_y;
-          y1 = CLAMP (y1, -32000.0, 32000.0);
-          y2 = CLAMP (y2, -32000.0, 32000.0);
+          y1 = CLAMP (y1, G_MININT32, G_MAXINT32);
+          y2 = CLAMP (y2, G_MININT32, G_MAXINT32);
         }
 
       if (draw)
