@@ -348,8 +348,16 @@ gtk_cifro_curve_button_press_event (GtkWidget      *widget,
       /* Точка не выбрана, но нажата кнопка Ctrl - нужно добавить новую точку. */
       if (event->state & GDK_CONTROL_MASK)
         {
+          gdouble min_x, max_x;
+          gdouble min_y, max_y;
           gdouble value_x, value_y;
+
+          gtk_cifro_area_get_limits (carea, &min_x, &max_x, &min_y, &max_y);
           gtk_cifro_area_point_to_value (carea, event->x, event->y, &value_x, &value_y);
+
+          if ((value_x < min_x) ||  (value_x > max_x) || (value_y < min_y) || (value_y > max_y))
+            return TRUE;
+
           gtk_cifro_curve_add_point (ccurve, value_x, value_y);
 
           return TRUE;
