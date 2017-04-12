@@ -882,6 +882,40 @@ gtk_cifro_area_get_scale (GtkCifroArea *carea,
 }
 
 /**
+ * gtk_cifro_area_set_view_center:
+ * @carea: указатель на #GtkCifroArea
+ * @center_x: центр изображения по оси X
+ * @center_y: центр изображения по оси X
+ *
+ * Функция задаёт границы текущей видимости изображения относительно
+ * указанного центра.
+ *
+ */
+void
+gtk_cifro_area_set_view_center (GtkCifroArea *carea,
+                                gdouble       center_x,
+                                gdouble       center_y)
+{
+  gdouble width, height;
+  gdouble from_x, to_x;
+  gdouble from_y, to_y;
+
+  g_return_if_fail (GTK_IS_CIFRO_AREA (carea));
+
+  gtk_cifro_area_get_view (carea, &from_x, &to_x, &from_y, &to_y);
+
+  width = (to_x - from_x) / 2.0;
+  height = (to_y - from_y) / 2.0;
+
+  from_x = center_x - width;
+  to_x = center_x + width;
+  from_y = center_y - height;
+  to_y = center_y + height;
+
+  gtk_cifro_area_set_view (carea, from_x, to_x, from_y, to_y);
+}
+
+/**
  * gtk_cifro_area_set_view:
  * @carea: указатель на #GtkCifroArea
  * @from_x: минимальная граница изображения по оси X

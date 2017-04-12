@@ -193,6 +193,11 @@ void                   gtk_cifro_area_get_scale                (GtkCifroArea    
                                                                 gdouble               *scale_y);
 
 GTK_CIFROAREA_EXPORT
+void                   gtk_cifro_area_set_view_center          (GtkCifroArea          *carea,
+                                                                gdouble                center_x,
+                                                                gdouble                center_y);
+
+GTK_CIFROAREA_EXPORT
 void                   gtk_cifro_area_set_view                 (GtkCifroArea          *carea,
                                                                 gdouble                from_x,
                                                                 gdouble                to_x,
