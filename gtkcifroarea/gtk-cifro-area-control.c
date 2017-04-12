@@ -58,8 +58,12 @@ struct _GtkCifroAreaControlPrivate
   gdouble                rotate_step;          /* Величина шага вращения. */
 
   gboolean               move_area;            /* Признак перемещения при нажатой клавише мыши. */
-  gint                   move_start_x;         /* Начальная координата x перемещения. */
-  gint                   move_start_y;         /* Начальная координата y перемещения. */
+  gdouble                start_from_x;         /* Начальная граница отображения по оси X. */
+  gdouble                start_to_x;           /* Начальная граница отображения по оси X. */
+  gdouble                start_from_y;         /* Начальная граница отображения по оси Y. */
+  gdouble                start_to_y;           /* Начальная граница отображения по оси Y. */
+  gint                   move_from_x;          /* Начальная координата перемещения. */
+  gint                   move_from_y;          /* Начальная координата перемещения. */
 };
 
 static gboolean  gtk_cifro_area_control_key_press             (GtkWidget                     *widget,
@@ -283,8 +287,10 @@ gtk_cifro_area_control_button_press_release (GtkWidget      *widget,
           (event->y > border_top) && (event->y < (border_top + clip_height)))
         {
           priv->move_area = TRUE;
-          priv->move_start_x = event->x;
-          priv->move_start_y = event->y;
+          priv->move_from_x = event->x;
+          priv->move_from_y = event->y;
+          gtk_cifro_area_get_view (carea, &priv->start_from_x, &priv->start_to_x,
+                                          &priv->start_from_y, &priv->start_to_y);
         }
     }
 
@@ -309,10 +315,17 @@ gtk_cifro_area_control_motion (GtkWidget      *widget,
   /* Режим перемещения - сдвигаем область. */
   if (priv->move_area)
     {
-      gtk_cifro_area_move (carea, priv->move_start_x - event->x, event->y - priv->move_start_y);
+      gdouble x0, y0;
+      gdouble xd, yd;
+      gdouble dx, dy;
 
-      priv->move_start_x = event->x;
-      priv->move_start_y = event->y;
+      gtk_cifro_area_point_to_value (carea, priv->move_from_x, priv->move_from_y, &x0, &y0);
+      gtk_cifro_area_point_to_value (carea, event->x, event->y, &xd, &yd);
+      dx = x0 - xd;
+      dy = y0 - yd;
+
+      gtk_cifro_area_set_view (carea, priv->start_from_x + dx, priv->start_to_x + dx,
+                                      priv->start_from_y + dy, priv->start_to_y + dy);
 
       gdk_event_request_motions (event);
     }

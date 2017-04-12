@@ -264,7 +264,7 @@ cairo_sdline_surface_create_for (cairo_surface_t *cairo_surface)
       (cairo_image_surface_get_format (cairo_surface) != CAIRO_FORMAT_RGB24))
     return NULL;
 
-  surface = g_malloc (sizeof(cairo_sdline_surface));
+  surface = g_slice_new (cairo_sdline_surface);
   surface->cairo = cairo_create (cairo_surface);
   surface->cairo_surface = cairo_surface;
   surface->width = cairo_image_surface_get_width (cairo_surface);
@@ -288,7 +288,7 @@ cairo_sdline_surface_destroy (cairo_sdline_surface *surface)
   if (surface->self_create)
     cairo_surface_destroy (surface->cairo_surface);
 
-  g_free (surface);
+  g_slice_free (cairo_sdline_surface, surface);
 }
 
 /* Функция переводит значение цвета из отдельных компонентов в упакованное 32-х битное значение. */

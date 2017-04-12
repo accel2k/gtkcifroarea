@@ -97,7 +97,6 @@ struct _GtkCifroAreaPrivate
   gboolean               swap_x;               /* TRUE - ось x направлена влево, FALSE - вправо. */
   gboolean               swap_y;               /* TRUE - ось y направлена вниз, FALSE - вверх. */
 
-  gboolean               rotate;               /* Разрешение поворота. */
   gdouble                angle;                /* Угол поворота изображения в радианах. */
   gdouble                angle_cos;            /* Косинус угла поворота изображения. */
   gdouble                angle_sin;            /* Синус угла поворота изображения. */
@@ -300,7 +299,6 @@ gtk_cifro_area_update_visible (GtkCifroArea *carea,
   gdouble x_width, y_height;
 
   /* Параметры отображения. */
-  priv->rotate = gtk_cifro_area_get_rotate (carea);
   gtk_cifro_area_get_swap (carea, &priv->swap_x, &priv->swap_y);
   gtk_cifro_area_get_stick (carea, &priv->stick_x, &priv->stick_y);
   gtk_cifro_area_get_border (carea, &priv->border_top, &priv->border_bottom,
@@ -365,10 +363,15 @@ gtk_cifro_area_update_visible (GtkCifroArea *carea,
           priv->from_x = priv->min_x;
           priv->to_x = priv->min_x + x_width;
         }
-      if (priv->to_x > priv->max_x)
+      else if (priv->to_x > priv->max_x)
         {
           priv->from_x = priv->max_x - x_width;
           priv->to_x = priv->max_x;
+        }
+      else
+        {
+          priv->from_x = (priv->from_x + ((priv->to_x - priv->from_x) / 2.0)) - (x_width / 2.0);
+          priv->to_x = priv->from_x + x_width;
         }
     }
 
@@ -398,10 +401,15 @@ gtk_cifro_area_update_visible (GtkCifroArea *carea,
           priv->from_y = priv->min_y;
           priv->to_y = priv->min_y + y_height;
         }
-      if (priv->to_y > priv->max_y)
+      else if (priv->to_y > priv->max_y)
         {
           priv->from_y = priv->max_y - y_height;
           priv->to_y = priv->max_y;
+        }
+      else
+        {
+          priv->from_y = (priv->from_y + ((priv->to_y - priv->from_y) / 2.0)) - (y_height / 2.0);
+          priv->to_y = priv->from_y + y_height;
         }
     }
 
@@ -409,7 +417,7 @@ gtk_cifro_area_update_visible (GtkCifroArea *carea,
   if ((priv->visible_width != visible_width) || (priv->visible_height != visible_height))
     {
       /* Если новые размеры стали больше, пересоздаём объекты рисования в видимой области. */
-      if (visible_width > priv->visible_width || visible_height > priv->visible_height)
+      if ((visible_width > priv->visible_width) || (visible_height > priv->visible_height))
         {
           cairo_surface_t *surface;
 
@@ -453,8 +461,8 @@ gtk_cifro_area_draw (GtkWidget *widget,
 
   gdouble cairo_width = priv->widget_width;
   gdouble cairo_height = priv->widget_height;
-  gdouble shift_width = (priv->widget_width - priv->visible_width) / 2.0;
-  gdouble shift_height = (priv->widget_height - priv->visible_height) / 2.0;
+  gdouble shift_width = (cairo_width - priv->visible_width) / 2.0;
+  gdouble shift_height = (cairo_height - priv->visible_height) / 2.0;
   gdouble angle = priv->angle;
 
   if ((priv->clip_width == 0) || (priv->clip_height == 0))
@@ -499,7 +507,7 @@ gtk_cifro_area_draw (GtkWidget *widget,
           cairo_translate (cairo, 0, -cairo_height);
         }
 
-      if (priv->rotate)
+      if (angle != 0.0)
         {
           cairo_rectangle (cairo, priv->border_left, priv->border_top, priv->clip_width, priv->clip_height);
           cairo_clip (cairo);
@@ -510,7 +518,7 @@ gtk_cifro_area_draw (GtkWidget *widget,
           cairo_translate (cairo, -cairo_width / 2.0, -cairo_height / 2.0);
         }
 
-      cairo_set_source_surface (cairo, cairo_get_target (priv->visible_cairo), shift_width, shift_height);
+      cairo_set_source_surface (cairo, surface, shift_width, shift_height);
       cairo_paint (cairo);
 
       cairo_restore (cairo);
@@ -958,7 +966,7 @@ gtk_cifro_area_set_angle (GtkCifroArea *carea,
 
   priv = carea->priv;
 
-  if (!priv->rotate)
+  if (!gtk_cifro_area_get_rotate (carea))
     return;
 
   angle = fmodf (angle, 2.0 * G_PI);
@@ -971,12 +979,8 @@ gtk_cifro_area_set_angle (GtkCifroArea *carea,
   priv->angle_cos = cos (priv->angle);
   priv->angle_sin = sin (priv->angle);
 
-  if (priv->rotate)
-    {
-      gtk_cifro_area_update_visible (carea, FALSE);
-
-      gtk_widget_queue_draw (GTK_WIDGET (carea));
-    }
+  gtk_cifro_area_update_visible (carea, FALSE);
+  gtk_widget_queue_draw (GTK_WIDGET (carea));
 }
 
 /**

@@ -285,7 +285,7 @@ main (int    argc,
   gtk_window_set_default_size (GTK_WINDOW (window), 800, 400);
 
   /* Осциллограф. */
-  area = gtk_cifro_curve_new (curve_func_akima, NULL);
+  area = gtk_cifro_curve_new (GTK_CIFRO_SCOPE_GRAVITY_RIGHT_UP, curve_func_akima, NULL);
 
   /* Цвета каналов и кривой. */
   for (i = 0; i <= n_channels; i++)

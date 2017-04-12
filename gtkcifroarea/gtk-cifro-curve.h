@@ -88,7 +88,8 @@ GTK_CIFROAREA_EXPORT
 GType                  gtk_cifro_curve_get_type                (void);
 
 GTK_CIFROAREA_EXPORT
-GtkWidget             *gtk_cifro_curve_new                     (GtkCifroCurveFunc      curve_func,
+GtkWidget             *gtk_cifro_curve_new                     (GtkCifroScopeGravity   gravity,
+                                                                GtkCifroCurveFunc      curve_func,
                                                                 gpointer               curve_data);
 
 GTK_CIFROAREA_EXPORT

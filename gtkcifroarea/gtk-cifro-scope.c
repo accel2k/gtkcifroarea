@@ -76,6 +76,11 @@ struct _GtkCifroScopePrivate
   gboolean                     show_info;                      /* Показывать или нет информацию о значениях под курсором. */
   gint32                       next_channel_id;                /* Идентификатор для нового канала. */
 
+  gboolean                     swap_x;                         /* Отражение по оси X. */
+  gboolean                     swap_y;                         /* Отражение по оси Y. */
+  gdouble                      angle;                          /* Угол поворота осей. */
+  gboolean                     rotate;                         /* Разрешение поворота. */
+
   gdouble                      min_x;                          /* Минимально возможное значение по оси X. */
   gdouble                      max_x;                          /* Максимально возможное значение по оси X. */
   gdouble                      min_y;                          /* Минимально возможное значение по оси Y. */
@@ -238,8 +243,63 @@ gtk_cifro_scope_object_constructed (GObject *object)
 
   G_OBJECT_CLASS (gtk_cifro_scope_parent_class)->constructed (object);
 
-  /* Параметры GtkCifroArea по умолчанию. */
-  gtk_cifro_area_set_scale_on_resize (GTK_CIFRO_AREA (cscope), TRUE);
+  /* Направления осей. */
+  switch (priv->gravity)
+    {
+    case GTK_CIFRO_SCOPE_GRAVITY_RIGHT_UP:
+      priv->swap_x = FALSE;
+      priv->swap_y = FALSE;
+      priv->angle = 0;
+      break;
+
+    case GTK_CIFRO_SCOPE_GRAVITY_LEFT_UP:
+      priv->swap_x = TRUE;
+      priv->swap_y = FALSE;
+      priv->angle = 0;
+      break;
+
+    case GTK_CIFRO_SCOPE_GRAVITY_RIGHT_DOWN:
+      priv->swap_x = FALSE;
+      priv->swap_y = TRUE;
+      priv->angle = 0;
+      break;
+
+    case GTK_CIFRO_SCOPE_GRAVITY_LEFT_DOWN:
+      priv->swap_x = TRUE;
+      priv->swap_y = TRUE;
+      priv->angle = 0;
+      break;
+
+    case GTK_CIFRO_SCOPE_GRAVITY_UP_RIGHT:
+      priv->swap_x = TRUE;
+      priv->swap_y = FALSE;
+      priv->angle = G_PI / 2.0;
+      break;
+
+    case GTK_CIFRO_SCOPE_GRAVITY_UP_LEFT:
+      priv->swap_x = TRUE;
+      priv->swap_y = TRUE;
+      priv->angle = G_PI / 2.0;
+      break;
+
+    case GTK_CIFRO_SCOPE_GRAVITY_DOWN_RIGHT:
+      priv->swap_x = FALSE;
+      priv->swap_y = FALSE;
+      priv->angle = G_PI / 2.0;
+      break;
+
+    case GTK_CIFRO_SCOPE_GRAVITY_DOWN_LEFT:
+      priv->swap_x = FALSE;
+      priv->swap_y = TRUE;
+      priv->angle = G_PI / 2.0;
+      break;
+
+    default:
+      priv->swap_x = FALSE;
+      priv->swap_y = FALSE;
+      priv->angle = 0;
+      break;
+    }
 
   /* Диапазоны значений по умолчанию. */
   priv->min_x = 1e-6;
@@ -271,6 +331,13 @@ gtk_cifro_scope_object_constructed (GObject *object)
   g_signal_connect (cscope, "configure-event", G_CALLBACK (gtk_cifro_scope_configure), NULL);
   g_signal_connect (cscope, "motion-notify-event", G_CALLBACK (gtk_cifro_scope_motion_notify), NULL);
   g_signal_connect (cscope, "leave-notify-event", G_CALLBACK (gtk_cifro_scope_leave_notify), NULL);
+
+  /* Параметры GtkCifroArea по умолчанию. */
+  gtk_cifro_area_set_scale_on_resize (GTK_CIFRO_AREA (cscope), TRUE);
+
+  priv->rotate = TRUE;
+  gtk_cifro_area_set_angle (GTK_CIFRO_AREA (cscope), priv->angle);
+  priv->rotate = FALSE;
 }
 
 static void
@@ -306,7 +373,11 @@ gtk_cifro_scope_free_channel (gpointer data)
 static gboolean
 gtk_cifro_scope_get_rotate (GtkCifroArea *carea)
 {
-  return FALSE;
+  GtkCifroScope *cscope;
+
+  cscope = GTK_CIFRO_SCOPE (carea);
+
+  return cscope->priv->rotate;
 }
 
 /* Виртуальная функция для определения необходимости отражения изображения. */
@@ -316,73 +387,11 @@ gtk_cifro_scope_get_swap (GtkCifroArea *carea,
                           gboolean     *swap_y)
 {
   GtkCifroScope *cscope;
-  gboolean new_swap_x;
-  gboolean new_swap_y;
-  gdouble new_angle;
 
   cscope = GTK_CIFRO_SCOPE (carea);
 
-  switch (cscope->priv->gravity)
-    {
-    case GTK_CIFRO_SCOPE_GRAVITY_RIGHT_UP:
-      new_swap_x = FALSE;
-      new_swap_y = FALSE;
-      new_angle = 0;
-      break;
-
-    case GTK_CIFRO_SCOPE_GRAVITY_LEFT_UP:
-      new_swap_x = TRUE;
-      new_swap_y = FALSE;
-      new_angle = 0;
-      break;
-
-    case GTK_CIFRO_SCOPE_GRAVITY_RIGHT_DOWN:
-      new_swap_x = FALSE;
-      new_swap_y = TRUE;
-      new_angle = 0;
-      break;
-
-    case GTK_CIFRO_SCOPE_GRAVITY_LEFT_DOWN:
-      new_swap_x = TRUE;
-      new_swap_y = TRUE;
-      new_angle = 0;
-      break;
-
-    case GTK_CIFRO_SCOPE_GRAVITY_UP_RIGHT:
-      new_swap_x = TRUE;
-      new_swap_y = FALSE;
-      new_angle = G_PI / 2.0;
-      break;
-
-    case GTK_CIFRO_SCOPE_GRAVITY_UP_LEFT:
-      new_swap_x = TRUE;
-      new_swap_y = TRUE;
-      new_angle = G_PI / 2.0;
-      break;
-
-    case GTK_CIFRO_SCOPE_GRAVITY_DOWN_RIGHT:
-      new_swap_x = FALSE;
-      new_swap_y = FALSE;
-      new_angle = G_PI / 2.0;
-      break;
-
-    case GTK_CIFRO_SCOPE_GRAVITY_DOWN_LEFT:
-      new_swap_x = FALSE;
-      new_swap_y = TRUE;
-      new_angle = G_PI / 2.0;
-      break;
-
-    default:
-      new_swap_x = FALSE;
-      new_swap_y = FALSE;
-      new_angle = 0;
-      break;
-    }
-
-  gtk_cifro_area_set_angle (carea, new_angle);
-
-  (swap_x != NULL) ? *swap_x = new_swap_x : 0;
-  (swap_y != NULL) ? *swap_y = new_swap_y : 0;
+  (swap_x != NULL) ? *swap_x = cscope->priv->swap_x : 0;
+  (swap_y != NULL) ? *swap_y = cscope->priv->swap_y : 0;
 }
 
 /* Виртуальная функция для определения размеров окантовки. */

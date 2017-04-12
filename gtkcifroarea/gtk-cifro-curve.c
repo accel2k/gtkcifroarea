@@ -484,6 +484,7 @@ gtk_cifro_curve_motion_notify_event (GtkWidget      *widget,
 
 /**
  * gtk_cifro_curve_new:
+ * @gravity: ориентация осей осциллографа
  * @curve_func: функция расчёта кривой по заданным точкам
  * @curve_data: пользовательские данные для передачи в curve_func
  *
@@ -493,10 +494,15 @@ gtk_cifro_curve_motion_notify_event (GtkWidget      *widget,
  *
  */
 GtkWidget *
-gtk_cifro_curve_new (GtkCifroCurveFunc curve_func,
-                     gpointer          curve_data)
+gtk_cifro_curve_new (GtkCifroScopeGravity gravity,
+                     GtkCifroCurveFunc    curve_func,
+                     gpointer             curve_data)
 {
-  return g_object_new (GTK_TYPE_CIFRO_CURVE, "curve-func", curve_func, "curve-data", curve_data, NULL);
+  return g_object_new (GTK_TYPE_CIFRO_CURVE,
+                       "gravity", gravity,
+                       "curve-func", curve_func,
+                       "curve-data", curve_data,
+                       NULL);
 }
 
 /**
