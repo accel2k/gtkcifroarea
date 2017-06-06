@@ -2,7 +2,7 @@
 #define __GTK_CIFROAREA_EXPORTS_H__
 
 #if defined (_WIN32)
-  #if defined (gtkcifroarea_2_0_EXPORTS) || defined (gtkcifroarea_3_0_EXPORTS)
+  #if defined (gtkcifroarea_2_1_EXPORTS) || defined (gtkcifroarea_3_1_EXPORTS)
     #define GTK_CIFROAREA_EXPORT __declspec (dllexport)
   #else
     #define GTK_CIFROAREA_EXPORT __declspec (dllimport)

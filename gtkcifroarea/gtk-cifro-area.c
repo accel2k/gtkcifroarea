@@ -133,11 +133,11 @@ struct _GtkCifroAreaPrivate
 
 static void            gtk_cifro_area_object_finalize          (GObject                       *carea);
 
-static gint            gtk_cifro_area_get_visible_width        (gdouble                        width,
+static guint           gtk_cifro_area_get_visible_width        (gdouble                        width,
                                                                 gdouble                        height,
                                                                 gdouble                        angle);
 
-static gint            gtk_cifro_area_get_visible_height       (gdouble                        width,
+static guint           gtk_cifro_area_get_visible_height       (gdouble                        width,
                                                                 gdouble                        height,
                                                                 gdouble                        angle);
 
@@ -253,7 +253,7 @@ gtk_cifro_area_object_finalize (GObject *object)
 }
 
 /* Функция расчёта ширины видимой области для прямоугольника width x height, повёрнутого на угол angle. */
-static gint
+static guint
 gtk_cifro_area_get_visible_width (gdouble width,
                                   gdouble height,
                                   gdouble angle)
@@ -271,7 +271,7 @@ gtk_cifro_area_get_visible_width (gdouble width,
 }
 
 /* Функция расчёта высоты видимой области для прямоугольника width x height, повёрнутого на угол angle. */
-static gint
+static guint
 gtk_cifro_area_get_visible_height (gdouble width,
                                    gdouble height,
                                    gdouble angle)
@@ -295,7 +295,7 @@ gtk_cifro_area_update_visible (GtkCifroArea *carea,
 {
   GtkCifroAreaPrivate *priv = carea->priv;
 
-  gint visible_width, visible_height;
+  guint visible_width, visible_height;
   gdouble x_width, y_height;
 
   /* Параметры отображения. */

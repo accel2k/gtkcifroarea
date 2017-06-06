@@ -31,8 +31,8 @@
 static gboolean        quit = FALSE;
 
 static gchar          *draw_type = "lined";            /* Тип отображения данных. */
-static gint            n_channels = 4;                 /* Число каналов осциллографа. */
-static gint            n_points = 1000;                /* Число точек осциллограммы. */
+static guint           n_channels = 4;                 /* Число каналов осциллографа. */
+static guint           n_points = 1000;                /* Число точек осциллограммы. */
 
 static gdouble         frequency = 10.0;               /* Частота сигнала, Гц. */
 static gdouble         max_time = 1000.0;              /* Максимальное время отображения, мс. */
@@ -159,7 +159,7 @@ destroy_callback (GtkWidget *widget,
 {
   GArray *points;
   GtkCifroCurvePoint *point;
-  gint i;
+  guint i;
 
   points = gtk_cifro_curve_get_points (GTK_CIFRO_CURVE( user_data ));
 
@@ -183,7 +183,7 @@ update_data (gpointer user_data)
 {
   GtkCifroScope *cscope = user_data;
 
-  static gint i, j, k;
+  static guint i, j, k;
 
   if (quit)
     return FALSE;
@@ -235,7 +235,7 @@ main (int    argc,
   GtkWidget *window;
   GtkWidget *area;
 
-  gint i;
+  guint i;
 
   gtk_init (&argc, &argv);
 

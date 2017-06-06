@@ -67,7 +67,7 @@ typedef struct
   gdouble                      value_scale;                    /* Коэффициент масштабирования данных. */
 
   gfloat                      *data;                           /* Данные для отображения. */
-  gint                         size;                           /* Размер массива данных для отображения. */
+  guint                        size;                           /* Размер массива данных для отображения. */
 } GtkCifroScopeChannel;
 
 struct _GtkCifroScopePrivate
@@ -1007,7 +1007,7 @@ gtk_cifro_scope_draw_info (GtkWidget *widget,
   gdouble from_y;
   gdouble to_y;
 
-  gint n_labels;
+  guint n_labels;
 
   gint mark_width;
   gint label_width;
@@ -1122,14 +1122,14 @@ gtk_cifro_scope_draw_info (GtkWidget *widget,
     info_height += text_spacing;
 
   /* Проверяем размеры области отображения. */
-  if (info_width > (area_width - 12 * text_spacing))
+  if (info_width > (gint)(area_width - 12 * text_spacing))
     return;
-  if (info_height > (area_height - 12 * text_spacing))
+  if (info_height > (gint)(area_height - 12 * text_spacing))
     return;
 
   /* Место для отображения информации. */
-  if ((priv->pointer_x > (area_width - 8 * text_spacing - info_width)) &&
-      (priv->pointer_y < (8 * text_spacing + info_height)))
+  if ((priv->pointer_x > (gint)(area_width - 8 * text_spacing - info_width)) &&
+      (priv->pointer_y < (gint)(8 * text_spacing + info_height)))
     {
       x1 = 6 * text_spacing;
     }
@@ -1326,7 +1326,8 @@ gtk_cifro_scope_draw_lined_data (GtkWidget            *widget,
 
 #define VALUES_DATA(i) ((values_data[i] * values_scale) + values_shift)
 
-  gint i, j;
+  guint i;
+  gint j;
   gint i_range_begin, i_range_end;
   gdouble x_range_begin, x_range_end;
   gdouble y_start, y_end;
@@ -1798,8 +1799,8 @@ gtk_cifro_scope_motion_notify (GtkWidget            *widget,
   guint area_width;
   guint area_height;
 
-  gint x = event->x;
-  gint y = event->y;
+  guint x = event->x;
+  guint y = event->y;
 
   /* Проверяем, что координаты курсора находятся в рабочей области. */
   gtk_cifro_area_get_size (carea, &area_width, &area_height);

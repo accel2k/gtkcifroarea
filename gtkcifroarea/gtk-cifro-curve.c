@@ -254,7 +254,7 @@ gtk_cifro_curve_visible_draw (GtkWidget *widget,
   gdouble x_value;
   gdouble y_value;
   gdouble y1, y2;
-  gint i;
+  guint i;
 
   surface = cairo_sdline_surface_create_for (cairo_get_target (cairo));
   g_return_if_fail (surface != NULL);
@@ -289,7 +289,7 @@ gtk_cifro_curve_visible_draw (GtkWidget *widget,
     {
       gdouble x, y;
       gdouble point_radius = 0.5 * border_top;
-      GtkCifroCurvePoint *point = &g_array_index( priv->curve_points, GtkCifroCurvePoint, i );
+      GtkCifroCurvePoint *point = &g_array_index (priv->curve_points, GtkCifroCurvePoint, i);
 
       gtk_cifro_area_visible_value_to_point (carea, &x, &y, point->x, point->y);
 
@@ -303,11 +303,11 @@ gtk_cifro_curve_visible_draw (GtkWidget *widget,
       cairo_arc (cairo, x, y, point_radius / 4.0, 0.0, 2 * G_PI);
       cairo_fill (cairo);
 
-      if (priv->selected_point != i)
-        continue;
-
-      cairo_arc (cairo, x, y, point_radius, 0.0, 2 * G_PI);
-      cairo_stroke (cairo);
+      if (priv->selected_point == i)
+        {
+          cairo_arc (cairo, x, y, point_radius, 0.0, 2 * G_PI);
+          cairo_stroke (cairo);
+        }
     }
 
   cairo_sdline_surface_destroy (surface);
