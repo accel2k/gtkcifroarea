@@ -15,12 +15,22 @@ all: release
 
 release:
 	@-${MAKE_DIR} build
-	@cd build && cmake -G $(CMAKE_GENERATOR) -D CMAKE_BUILD_TYPE=Release -D CMAKE_INSTALL_PREFIX=$(PREFIX) -D CIFRO_AREA_WITH_GTK2=$(WITH_GTK2) ..
+	@cd build && cmake -G $(CMAKE_GENERATOR) \
+                       -D CMAKE_BUILD_TYPE=Release \
+                       -D CMAKE_INSTALL_PREFIX=$(PREFIX) \
+                       -D CIFRO_AREA_WITH_GTK2=$(WITH_GTK2) \
+                       -D CIFRO_AREA_WITH_DOC=$(WITH_DOC) \
+                       ..
 	@$(MAKE) -C build
 
 debug:
 	@-${MAKE_DIR} build
-	@cd build && cmake -G $(CMAKE_GENERATOR) -D CMAKE_BUILD_TYPE=Debug -D CMAKE_INSTALL_PREFIX=$(PREFIX) -D CIFRO_AREA_WITH_GTK2=$(WITH_GTK2) ..
+	@cd build && cmake -G $(CMAKE_GENERATOR) \
+                       -D CMAKE_BUILD_TYPE=Debug \
+                       -D CMAKE_INSTALL_PREFIX=$(PREFIX) \
+                       -D CIFRO_AREA_WITH_GTK2=$(WITH_GTK2) \
+                       -D CIFRO_AREA_WITH_DOC=$(WITH_DOC) \
+                       ..
 	@$(MAKE) -C build
 
 install: release

@@ -5,8 +5,10 @@ cmake_minimum_required (VERSION 3.0)
 
 include (FindPkgConfig)
 
-set (GtkDoc_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-find_package (GtkDoc 1.21 REQUIRED)
+if (CIFRO_AREA_WITH_DOC)
+  set (GtkDoc_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+  find_package (GtkDoc 1.21 REQUIRED)
+endif ()
 
 if (NOT CMAKE_BUILD_TYPE)
   set (CMAKE_BUILD_TYPE Release)
@@ -57,4 +59,7 @@ add_definitions (-DG_LOG_DOMAIN="GtkCifroArea")
 
 add_subdirectory (gtkcifroarea)
 add_subdirectory (tests)
-add_subdirectory (docs)
+
+if (CIFRO_AREA_WITH_DOC)
+  add_subdirectory (docs)
+endif ()
