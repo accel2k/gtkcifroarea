@@ -2051,17 +2051,19 @@ gtk_cifro_scope_set_channel_name (GtkCifroScope *cscope,
 {
   GHashTableIter channels_iter;
   GtkCifroScopeChannel *channel;
-  guint cur_channel_id;
+  gpointer cur_channel_id;
 
   g_return_if_fail (GTK_IS_CIFRO_SCOPE (cscope));
 
   g_hash_table_iter_init (&channels_iter, cscope->priv->channels);
   while (g_hash_table_iter_next (&channels_iter, (gpointer) &cur_channel_id, (gpointer) &channel))
-    if ((channel_id == 0) || (cur_channel_id == channel_id))
-      {
-        g_free (channel->name);
-        channel->name = g_strdup (axis_name);
-      }
+    {
+      if ((channel_id == 0) || (GPOINTER_TO_UINT (cur_channel_id) == channel_id))
+        {
+          g_free (channel->name);
+          channel->name = g_strdup (axis_name);
+        }
+    }
 
   gtk_widget_queue_draw (GTK_WIDGET (cscope));
 }
@@ -2087,13 +2089,13 @@ gtk_cifro_scope_set_channel_time_param (GtkCifroScope *cscope,
 {
   GHashTableIter channels_iter;
   GtkCifroScopeChannel *channel;
-  guint cur_channel_id;
+  gpointer cur_channel_id;
 
   g_return_if_fail (GTK_IS_CIFRO_SCOPE (cscope));
 
   g_hash_table_iter_init (&channels_iter, cscope->priv->channels);
   while (g_hash_table_iter_next (&channels_iter, (gpointer) &cur_channel_id, (gpointer) &channel))
-    if ((channel_id == 0) || (cur_channel_id == channel_id))
+    if ((channel_id == 0) || (GPOINTER_TO_UINT (cur_channel_id) == channel_id))
       {
         channel->time_shift = time_shift;
         channel->time_step = time_step;
@@ -2123,17 +2125,19 @@ gtk_cifro_scope_set_channel_value_param (GtkCifroScope *cscope,
 {
   GHashTableIter channels_iter;
   GtkCifroScopeChannel *channel;
-  guint cur_channel_id;
+  gpointer cur_channel_id;
 
   g_return_if_fail (GTK_IS_CIFRO_SCOPE (cscope));
 
   g_hash_table_iter_init (&channels_iter, cscope->priv->channels);
   while (g_hash_table_iter_next (&channels_iter, (gpointer) &cur_channel_id, (gpointer) &channel))
-    if ((channel_id == 0) || (cur_channel_id == channel_id))
-      {
-        channel->value_shift = value_shift;
-        channel->value_scale = value_scale;
-      }
+    {
+      if ((channel_id == 0) || (GPOINTER_TO_UINT (cur_channel_id) == channel_id))
+        {
+          channel->value_shift = value_shift;
+          channel->value_scale = value_scale;
+        }
+    }
 
   gtk_widget_queue_draw (GTK_WIDGET (cscope));
 }
@@ -2155,14 +2159,16 @@ gtk_cifro_scope_set_channel_draw_type (GtkCifroScope         *cscope,
 {
   GHashTableIter channels_iter;
   GtkCifroScopeChannel *channel;
-  guint cur_channel_id;
+  gpointer cur_channel_id;
 
   g_return_if_fail (GTK_IS_CIFRO_SCOPE (cscope));
 
   g_hash_table_iter_init (&channels_iter, cscope->priv->channels);
   while (g_hash_table_iter_next (&channels_iter, (gpointer) &cur_channel_id, (gpointer) &channel))
-    if ((channel_id == 0) || (cur_channel_id == channel_id))
-      channel->draw_type = draw_type;
+    {
+      if ((channel_id == 0) || (GPOINTER_TO_UINT (cur_channel_id) == channel_id))
+        channel->draw_type = draw_type;
+    }
 
   gtk_widget_queue_draw (GTK_WIDGET (cscope));
 }
@@ -2188,14 +2194,16 @@ gtk_cifro_scope_set_channel_color (GtkCifroScope *cscope,
 {
   GHashTableIter channels_iter;
   GtkCifroScopeChannel *channel;
-  guint cur_channel_id;
+  gpointer cur_channel_id;
 
   g_return_if_fail (GTK_IS_CIFRO_SCOPE (cscope));
 
   g_hash_table_iter_init (&channels_iter, cscope->priv->channels);
   while (g_hash_table_iter_next (&channels_iter, (gpointer) &cur_channel_id, (gpointer) &channel))
-    if ((channel_id == 0) || (cur_channel_id == channel_id))
-      channel->color = cairo_sdline_color (red, green, blue, 1.0);
+    {
+      if ((channel_id == 0) || (GPOINTER_TO_UINT (cur_channel_id) == channel_id))
+        channel->color = cairo_sdline_color (red, green, blue, 1.0);
+    }
 
   gtk_widget_queue_draw (GTK_WIDGET (cscope));
 }
@@ -2255,14 +2263,16 @@ gtk_cifro_scope_set_channel_show (GtkCifroScope *cscope,
 {
   GHashTableIter channels_iter;
   GtkCifroScopeChannel *channel;
-  guint cur_channel_id;
+  gpointer cur_channel_id;
 
   g_return_if_fail (GTK_IS_CIFRO_SCOPE (cscope));
 
   g_hash_table_iter_init (&channels_iter, cscope->priv->channels);
   while (g_hash_table_iter_next (&channels_iter, (gpointer) &cur_channel_id, (gpointer) &channel))
-    if ((channel_id == 0) || (cur_channel_id == channel_id))
-      channel->show = show;
+    {
+      if ((channel_id == 0) || (GPOINTER_TO_UINT (cur_channel_id) == channel_id))
+        channel->show = show;
+    }
 
   gtk_widget_queue_draw (GTK_WIDGET (cscope));
 }
