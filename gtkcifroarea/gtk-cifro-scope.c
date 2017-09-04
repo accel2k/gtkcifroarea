@@ -2222,7 +2222,7 @@ void
 gtk_cifro_scope_set_channel_data (GtkCifroScope *cscope,
                                   guint          channel_id,
                                   guint          n_values,
-                                  gfloat        *values)
+                                  const gfloat  *values)
 {
   GtkCifroScopeChannel* channel;
 

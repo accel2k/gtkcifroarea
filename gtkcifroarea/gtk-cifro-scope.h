@@ -170,7 +170,7 @@ GTK_CIFROAREA_EXPORT
 void                   gtk_cifro_scope_set_channel_data        (GtkCifroScope         *cscope,
                                                                 guint                  channel_id,
                                                                 guint                  n_values,
-                                                                gfloat                *values);
+                                                                const gfloat          *values);
 
 GTK_CIFROAREA_EXPORT
 void                   gtk_cifro_scope_set_channel_show        (GtkCifroScope         *cscope,
