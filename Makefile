@@ -33,9 +33,29 @@ debug:
                        ..
 	@$(MAKE) -C build
 
-install: release
+install: install-runtime
+
+install-all: release
 	@echo "Performing installation"
-	@$(MAKE) -C build install
+	@cd build && cmake -D CMAKE_INSTALL_DO_STRIP=YES \
+                       -P cmake_install.cmake
+
+install-runtime: release
+	@echo "Performing runtime installation"
+	@cd build && cmake -D COMPONENT=runtime \
+                       -D CMAKE_INSTALL_DO_STRIP=YES \
+                       -P cmake_install.cmake
+
+install-development: release
+	@echo "Performing development installation"
+	@cd build && cmake -D COMPONENT=development \
+                       -P cmake_install.cmake
+
+install-test: install-runtime
+	@echo "Performing test installation"
+	@cd build && cmake -D COMPONENT=test \
+                       -D CMAKE_INSTALL_DO_STRIP=YES \
+                       -P cmake_install.cmake
 
 clean:
 	@echo "Cleaning build directory"

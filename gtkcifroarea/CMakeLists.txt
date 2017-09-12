@@ -12,16 +12,19 @@ configure_file ("${CMAKE_CURRENT_SOURCE_DIR}/gtkcifroarea.pc.in"
                 "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/gtkcifroarea-${GTK_CIFRO_AREA_VERSION}.pc"
                 @ONLY)
 
-install (FILES "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/gtkcifroarea-${GTK_CIFRO_AREA_VERSION}.pc"
-         DESTINATION "lib/pkgconfig"
-         PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ GROUP_WRITE WORLD_READ)
-
-install (TARGETS gtkcifroarea-${GTK_CIFRO_AREA_VERSION} EXPORT gtkcifroarea-${GTK_CIFRO_AREA_VERSION}
+install (TARGETS gtkcifroarea-${GTK_CIFRO_AREA_VERSION}
+         COMPONENT runtime
          RUNTIME DESTINATION bin
          LIBRARY DESTINATION lib
          ARCHIVE DESTINATION lib
          PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
 
+install (FILES "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/gtkcifroarea-${GTK_CIFRO_AREA_VERSION}.pc"
+         COMPONENT development
+         DESTINATION "lib/pkgconfig"
+         PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ GROUP_WRITE WORLD_READ)
+
 install (FILES gtk-cifro-area.h gtk-cifro-area-control.h gtk-cifro-scope.h gtk-cifro-curve.h gtk-cifro-area-exports.h
+         COMPONENT development
          DESTINATION "include/gtkcifroarea-${GTK_CIFRO_AREA_VERSION}"
          PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
