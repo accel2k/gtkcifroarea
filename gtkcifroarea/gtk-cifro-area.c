@@ -592,8 +592,8 @@ gtk_cifro_area_get_rotate (GtkCifroArea *carea)
 /**
  * gtk_cifro_area_get_swap:
  * @carea: указатель на #GtkCifroArea
- * @swap_x: (out) (allow-none): признак отражения относительно оси X или %NULL
- * @swap_y: (out) (allow-none): признак отражения относительно оси Y или %NULL
+ * @swap_x: (out) (nullable): признак отражения относительно оси X или %NULL
+ * @swap_y: (out) (nullable): признак отражения относительно оси Y или %NULL
  *
  * Функция возвращает параметры зеркального отражения изображения по осям. Данная функция
  * является виртуальной и может быть переопределена классом, наследуемым от #GtkCifroArea,
@@ -625,8 +625,8 @@ gtk_cifro_area_get_swap (GtkCifroArea *carea,
 /**
  * gtk_cifro_area_get_stick:
  * @carea: указатель на #GtkCifroArea
- * @stick_x: (out) (allow-none): направление смещения по оси X или %NULL
- * @stick_y: (out) (allow-none): направление смещения по оси Y или %NULL
+ * @stick_x: (out) (nullable): направление смещения по оси X или %NULL
+ * @stick_y: (out) (nullable): направление смещения по оси Y или %NULL
  *
  * Функция возвращает направление, в котором будут смещаться координаты, если текущий
  * масштаб требует отображения большего размера, чем установлено пределом перемещения
@@ -659,10 +659,10 @@ gtk_cifro_area_get_stick (GtkCifroArea          *carea,
 /**
  * gtk_cifro_area_get_border:
  * @carea: указатель на #GtkCifroArea
- * @border_left: (out) (allow-none): размер окантовки с левой стороны или %NULL
- * @border_right: (out) (allow-none): размер окантовки с правой стороны или %NULL
- * @border_top: (out) (allow-none): размер окантовки сверху или %NULL
- * @border_bottom: (out) (allow-none): размер окантовки снизу или %NULL
+ * @border_left: (out) (nullable): размер окантовки с левой стороны или %NULL
+ * @border_right: (out) (nullable): размер окантовки с правой стороны или %NULL
+ * @border_top: (out) (nullable): размер окантовки сверху или %NULL
+ * @border_bottom: (out) (nullable): размер окантовки снизу или %NULL
  *
  * Функция возвращает текущие размеры области окантовки виджета. Данная функция является
  * виртуальной и может быть переопределена классом, наследуемым от #GtkCifroArea, для
@@ -698,10 +698,10 @@ gtk_cifro_area_get_border (GtkCifroArea *carea,
 /**
  * gtk_cifro_area_get_limits:
  * @carea: указатель на #GtkCifroArea
- * @min_x: (out) (allow-none): минимально возможное значение по оси X или %NULL
- * @max_x: (out) (allow-none): максимально возможное значение по оси X или %NULL
- * @min_y: (out) (allow-none): минимально возможное значение по оси Y или %NULL
- * @max_y: (out) (allow-none): максимально возможное значение по оси Y или %NULL
+ * @min_x: (out) (nullable): минимально возможное значение по оси X или %NULL
+ * @max_x: (out) (nullable): максимально возможное значение по оси X или %NULL
+ * @min_y: (out) (nullable): минимально возможное значение по оси Y или %NULL
+ * @max_y: (out) (nullable): максимально возможное значение по оси Y или %NULL
  *
  * Функция возвращает текущие значения пределов перемещения изображения. Данная функция
  * является виртуальной и может быть переопределена классом, наследуемым от #GtkCifroArea,
@@ -860,8 +860,8 @@ gtk_cifro_area_set_scale (GtkCifroArea *carea,
 /**
  * gtk_cifro_area_get_scale:
  * @carea: указатель на #GtkCifroArea
- * @scale_x: (out) (allow-none): масштаб по оси X
- * @scale_y: (out) (allow-none): масштаб по оси Y
+ * @scale_x: (out) (nullable): масштаб по оси X
+ * @scale_y: (out) (nullable): масштаб по оси Y
  *
  * Функция возвращает значения текущих масштабов отображения.
  *
@@ -955,10 +955,10 @@ gtk_cifro_area_set_view (GtkCifroArea *carea,
 /**
  * gtk_cifro_area_get_view:
  * @carea: указатель на #GtkCifroArea
- * @from_x: (out) (allow-none): минимальная граница изображения по оси X
- * @to_x: (out) (allow-none): минимальная граница изображения по оси X
- * @from_y: (out) (allow-none): минимальная граница изображения по оси Y
- * @to_y: (out) (allow-none): минимальная граница изображения по оси Y
+ * @from_x: (out) (nullable): минимальная граница изображения по оси X
+ * @to_x: (out) (nullable): минимальная граница изображения по оси X
+ * @from_y: (out) (nullable): минимальная граница изображения по оси Y
+ * @to_y: (out) (nullable): минимальная граница изображения по оси Y
  *
  * Функция возвращает границы текущей видимости изображения.
  *
@@ -1148,8 +1148,8 @@ gtk_cifro_area_zoom (GtkCifroArea         *carea,
 /**
  * gtk_cifro_area_get_size:
  * @carea: указатель на #GtkCifroArea
- * @width: (out) (allow-none): используемая ширина виджета
- * @height: (out) (allow-none): используемая высота виджета
+ * @width: (out) (nullable): используемая ширина виджета
+ * @height: (out) (nullable): используемая высота виджета
  *
  * Функция возвращает используемый размер виджета.
  *
@@ -1172,8 +1172,8 @@ gtk_cifro_area_get_size (GtkCifroArea *carea,
 /**
  * gtk_cifro_area_get_visible_size:
  * @carea: указатель на #GtkCifroArea
- * @width: (out) (allow-none): ширина видимой области
- * @height: (out) (allow-none): используемая высота виджета
+ * @width: (out) (nullable): ширина видимой области
+ * @height: (out) (nullable): используемая высота виджета
  *
  * Функция возвращает текущие значения размеров видимой области.
  *
@@ -1198,8 +1198,8 @@ gtk_cifro_area_get_visible_size (GtkCifroArea *carea,
  * @carea: указатель на #GtkCifroArea
  * @x: координата x в окне виджета
  * @y: координата y в окне виджета
- * @x_val: (out) (allow-none): значение x в логической системе координат
- * @y_val: (out) (allow-none): значение y в логической системе координат
+ * @x_val: (out) (nullable): значение x в логической системе координат
+ * @y_val: (out) (nullable): значение y в логической системе координат
  *
  * Функция преобразовает координаты из системы координат виджета в логические координаты.
  *
@@ -1245,8 +1245,8 @@ gtk_cifro_area_point_to_value (GtkCifroArea *carea,
 /**
  * gtk_cifro_area_value_to_point:
  * @carea: указатель на #GtkCifroArea
- * @x: (out) (allow-none): координата x в окне виджета
- * @y: (out) (allow-none): координата y в окне виджета
+ * @x: (out) (nullable): координата x в окне виджета
+ * @y: (out) (nullable): координата y в окне виджета
  * @x_val: значение x в логической системе координат
  * @y_val: значение y в логической системе координат
  *
@@ -1300,8 +1300,8 @@ gtk_cifro_area_value_to_point (GtkCifroArea *carea,
  * @carea: указатель на #GtkCifroArea
  * @x: координата x в видимой области
  * @y: координата y в видимой области
- * @x_val: (out) (allow-none): значение x в логической системе координат
- * @y_val: (out) (allow-none): значение y в логической системе координат
+ * @x_val: (out) (nullable): значение x в логической системе координат
+ * @y_val: (out) (nullable): значение y в логической системе координат
  *
  * Функция преобразовает координаты из прямоугольной системы видимой области
  * в логические координаты.
@@ -1327,8 +1327,8 @@ gtk_cifro_area_visible_point_to_value (GtkCifroArea *carea,
 /**
  * gtk_cifro_area_visible_value_to_point:
  * @carea: указатель на #GtkCifroArea
- * @x: (out) (allow-none): координата x в видимой области
- * @y: (out) (allow-none): координата y в видимой области
+ * @x: (out) (nullable): координата x в видимой области
+ * @y: (out) (nullable): координата y в видимой области
  * @x_val: значение x в логической системе координат
  * @y_val: значение y в логической системе координат
  *
@@ -1358,9 +1358,9 @@ gtk_cifro_area_visible_value_to_point (GtkCifroArea *carea,
  * @scale: масштаб, число точек экрана в одной логической единице
  * @step_width: желаемое расстояние между координатными осями, точки экрана
  * @from: (out): логическая координата первой линии сетки
- * @step: (out) (allow-none): логические шаг между линиями сетки
- * @range: (out) (allow-none): цена деления координатной сетки
- * @power: (out) (allow-none): степень цены деления координатной сетки
+ * @step: (out) (nullable): логические шаг между линиями сетки
+ * @range: (out) (nullable): цена деления координатной сетки
+ * @power: (out) (nullable): степень цены деления координатной сетки
  *
  * Функция расчитывает параметры прямоугольной координатной сетки. В функцию должны быть
  * переданы масштаб, желаемое расстояние между осями и начало области. Функция вернёт
