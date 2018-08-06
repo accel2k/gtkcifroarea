@@ -304,11 +304,6 @@ gtk_cifro_area_update_visible (GtkCifroArea *carea,
   gtk_cifro_area_get_border (carea, &priv->border_top, &priv->border_bottom,
                                     &priv->border_left, &priv->border_right);
 
-  priv->clip_width = 0;
-  priv->clip_height = 0;
-  priv->visible_width = 0;
-  priv->visible_height = 0;
-
   /* Проверяем размеры виджета. */
   if ((priv->widget_width <= (priv->border_left + priv->border_right)) ||
       (priv->widget_height <= (priv->border_top + priv->border_bottom)))
@@ -336,7 +331,7 @@ gtk_cifro_area_update_visible (GtkCifroArea *carea,
   /* Пределы перемещения изображения. */
   gtk_cifro_area_get_limits (carea, &priv->min_x, &priv->max_x, &priv->min_y, &priv->max_y);
 
-  /* Обновляем границы отображения если пределы перемещения меньше чем границы видимости. */
+  /* Обновляем границы отображения, если пределы перемещения меньше чем границы видимости. */
   x_width = priv->scale_x * visible_width;
   if (x_width > (priv->max_x - priv->min_x))
     {
@@ -429,7 +424,7 @@ gtk_cifro_area_update_visible (GtkCifroArea *carea,
           cairo_surface_destroy (surface);
         }
 
-      /* Запоминаем новые размеры видимой области и ссобщаем их. */
+      /* Запоминаем новые размеры видимой области и сообщаем их. */
       priv->visible_width = visible_width;
       priv->visible_height = visible_height;
     }
