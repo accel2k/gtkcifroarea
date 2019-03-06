@@ -176,6 +176,8 @@ gtk_cifro_area_init (GtkCifroArea *carea)
   priv->from_y = -1.0;
   priv->to_y = 1.0;
 
+  event_mask |= GDK_ENTER_NOTIFY_MASK;
+  event_mask |= GDK_LEAVE_NOTIFY_MASK;
   event_mask |= GDK_KEY_PRESS_MASK;
   event_mask |= GDK_KEY_RELEASE_MASK;
   event_mask |= GDK_BUTTON_PRESS_MASK;

@@ -84,22 +84,11 @@ static void
 gtk_cifro_area_control_init (GtkCifroAreaControl *control)
 {
   GtkCifroAreaControlPrivate *priv = gtk_cifro_area_control_get_instance_private (control);
-  gint event_mask = 0;
 
   control->priv = priv;
 
   priv->move_step = 1.0;
   priv->rotate_step = 1.0;
-
-  event_mask |= GDK_KEY_PRESS_MASK;
-  event_mask |= GDK_KEY_RELEASE_MASK;
-  event_mask |= GDK_BUTTON_PRESS_MASK;
-  event_mask |= GDK_BUTTON_RELEASE_MASK;
-  event_mask |= GDK_POINTER_MOTION_MASK;
-  event_mask |= GDK_POINTER_MOTION_HINT_MASK;
-  event_mask |= GDK_SCROLL_MASK;
-  gtk_widget_add_events (GTK_WIDGET (control), event_mask);
-  gtk_widget_set_can_focus (GTK_WIDGET (control), TRUE);
 }
 
 static void
