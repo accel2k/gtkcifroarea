@@ -1335,7 +1335,7 @@ gtk_cifro_scope_draw_lined_data (GtkWidget            *widget,
   gboolean draw = FALSE;
 
   /* Проверяем существование канала. */
-  if (channel == NULL)
+  if ((channel == NULL) || (channel->num <= 0))
     return;
 
   gtk_cifro_area_get_visible_size (carea, &visible_width, &visible_height);
@@ -1530,7 +1530,7 @@ gtk_cifro_scope_draw_dotted_data (GtkWidget            *widget,
   gdouble x, y;
 
   /* Проверяем существование канала. */
-  if (channel == NULL)
+  if ((channel == NULL) || (channel->num <= 0))
     return;
 
   gtk_cifro_area_get_scale (carea, &scale_x, &scale_y);
@@ -1606,7 +1606,7 @@ gtk_cifro_scope_draw_crossed_data (GtkWidget            *widget,
   gdouble x, y;
 
   /* Проверяем существование канала. */
-  if (channel == NULL)
+  if ((channel == NULL) || (channel->num <= 0))
     return;
 
   gtk_cifro_area_get_scale (carea, &scale_x, &scale_y);
